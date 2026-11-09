@@ -1,4 +1,0 @@
-c_sources = ["native/ui.c"];
-c_flags_cc = ["-std=c23", "-O2"];
-c_libs = ["raylib"];
-output = "gosling";
