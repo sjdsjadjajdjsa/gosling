@@ -104,6 +104,10 @@ void ui_rect(float x, float y, float w, float h, float r, uint32_t color) {
     else DrawRectangleRounded(rec, r * 2 >= m ? 1.0f : r * 2 / m, 12, rgba(color));
 }
 
+void ui_ring(float x, float y, float inner, float outer, float start, float end, uint32_t color) {
+    DrawRing((Vector2){ x, y }, inner, outer, start, end, 32, rgba(color));
+}
+
 void ui_circle(float x, float y, float r, uint32_t color) { DrawCircleV((Vector2){ x, y }, r, rgba(color)); }
 
 void ui_triangle(float x1, float y1, float x2, float y2, float x3, float y3, uint32_t color) {

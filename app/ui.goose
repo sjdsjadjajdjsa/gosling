@@ -23,6 +23,7 @@ extern fn present() = "ui_present";
 extern fn width() -> i32 = "ui_width";
 extern fn height() -> i32 = "ui_height";
 extern fn rect(x: f32, y: f32, w: f32, h: f32, r: f32, color: u32) = "ui_rect";
+extern fn ring(x: f32, y: f32, inner: f32, outer: f32, start: f32, end: f32, color: u32) = "ui_ring";
 extern fn circle(x: f32, y: f32, r: f32, color: u32) = "ui_circle";
 extern fn triangle(x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32, color: u32) = "ui_triangle";
 extern fn text(s: const u8[:], x: f32, y: f32, size: f32, color: u32) = "ui_text";

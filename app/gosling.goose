@@ -167,8 +167,9 @@ fn fmt_time(out: u8[>..]&, secs: f64) {
     format(out, s % 60);
 }
 
-fn message(text: const u8[:], w: f32) {
-    ui::text(text, (w - ui::text_width(text, 15.0)) / 2.0, LIST_TOP + 96.0, 15.0, FAINT);
+fn message(text: const u8[:], w: f32, h: f32) {
+    let y = LIST_TOP + (h - BAR_H - LIST_TOP) / 2.0 - 30.0;
+    ui::text(text, (w - ui::text_width(text, 15.0)) / 2.0, y, 15.0, FAINT);
 }
 
 fn search_box(w: f32, mx: f32, my: f32) {
@@ -196,10 +197,10 @@ fn search_box(w: f32, mx: f32, my: f32) {
 fn list(w: f32, h: f32, mx: f32, my: f32, click: bool) {
     let state = search::state();
     let n = search::count();
-    if state == search::IDLE { message("Search for a song, or drop a music file here.", w); return; }
-    if state == search::BUSY { message("Searching…", w); return; }
-    if state == search::FAILED { message("Couldn't reach YouTube Music. Check your connection.", w); return; }
-    if n == 0 { message("No songs found.", w); return; }
+    if state == search::IDLE { message("Search for a song, or drop a music file here.", w, h); return; }
+    if state == search::BUSY { message("Searching…", w, h); return; }
+    if state == search::FAILED { message("Couldn't reach YouTube Music. Check your connection.", w, h); return; }
+    if n == 0 { message("No songs found.", w, h); return; }
     let bottom = h - BAR_H;
     let view = bottom - LIST_TOP;
     if hit(mx, my, 0.0, LIST_TOP, w, view) { scroll -= ui::wheel() * 56.0; }
@@ -251,7 +252,10 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
         if click { player::toggle(); }
     }
     let icon = if active { ON_ACCENT } else { FAINT };
-    if player::paused() || !active {
+    if player::loading() {
+        let turn = (ui::time() * 360.0) as f32;
+        ui::ring(px, cy, 7.0, 9.5, turn, turn + 270.0, icon);
+    } else if player::paused() || !active {
         ui::triangle(px - 6.0, cy - 9.0, px - 6.0, cy + 9.0, px + 10.0, cy, icon);
     } else {
         ui::rect(px - 7.0, cy - 8.0, 5.0, 16.0, 1.5, icon);
@@ -260,46 +264,42 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
 
     let tx = PAD + 60.0;
     let tw = max(140.0, w * 0.26);
-    if now_title.len > 0 {
-        ui::text_fit(now_title, tx, cy - 19.0, 15.0, TEXT, tw);
-        ui::text_fit(now_artist, tx, cy + 3.0, 13.0, MUTED, tw);
-    } else if active {
-        var title: u8[512] = [0; 512];
-        let n = player::title(title);
-        ui::text_fit(title[..n], tx, cy - 9.0, 15.0, TEXT, tw);
-    } else {
+    var title: u8[512] = [0; 512];
+    let shown = if now_title.len > 0 { now_title[..] } else if player::loading() { "Opening link…" } else { title[..player::title(title)] };
+    let sub = if player::failed() { "Couldn't play this song" } else { now_artist[..] };
+    if !active && !player::failed() {
         ui::text("Nothing playing", tx, cy - 9.0, 15.0, FAINT);
+    } else if sub.len > 0 {
+        ui::text_fit(shown, tx, cy - 19.0, 15.0, TEXT, tw);
+        ui::text_fit(sub, tx, cy + 3.0, 13.0, MUTED, tw);
+    } else {
+        ui::text_fit(shown, tx, cy - 9.0, 15.0, TEXT, tw);
     }
 
     let vol_w = 100.0;
     let vx = w - PAD - vol_w;
     let track_x = tx + tw + 80.0;
     let track_w = vx - 84.0 - track_x;
-    let dur = player::duration();
-    if track_w > 40.0 && active {
-        if player::loading() {
-            ui::text("Loading…", track_x, cy - 8.0, 13.0, MUTED);
-        } else if player::failed() {
-            ui::text("Couldn't play this song", track_x, cy - 8.0, 13.0, MUTED);
-        } else {
-            let t = if drag == 1 { drag_value } else { player::time() };
-            var left: u8[>..] = [];
-            fmt_time(left, t);
-            var right: u8[>..] = [];
-            fmt_time(right, dur);
-            ui::text(left, track_x - 12.0 - ui::text_width(left, 12.0), cy - 7.0, 12.0, FAINT);
-            ui::text(right, track_x + track_w + 12.0, cy - 7.0, 12.0, FAINT);
-            let f = if dur > 0.0 { clamp(t / dur, 0.0, 1.0) as f32 } else { 0.0 };
-            ui::rect(track_x, cy - 2.0, track_w, 4.0, 2.0, RAISED);
-            ui::rect(track_x, cy - 2.0, track_w * f, 4.0, 2.0, ACCENT);
-            let over = dur > 0.0 && hit(mx, my, track_x - 6.0, cy - 12.0, track_w + 12.0, 24.0);
-            if over || drag == 1 {
-                ui::circle(track_x + track_w * f, cy, 6.0, TEXT);
-                hand = true;
-            }
-            if over && click { drag = 1; }
-            if drag == 1 { drag_value = clamp((mx - track_x) / track_w, 0.0, 1.0) * dur; }
+    let ready = active && !player::loading() && !player::failed();
+    let dur = if ready { player::duration() } else { 0.0 };
+    if track_w > 40.0 {
+        let t = if drag == 1 { drag_value } else if ready { player::time() } else { 0.0 };
+        var left: u8[>..] = [];
+        fmt_time(left, t);
+        var right: u8[>..] = [];
+        fmt_time(right, dur);
+        ui::text(left, track_x - 12.0 - ui::text_width(left, 12.0), cy - 7.0, 12.0, FAINT);
+        ui::text(right, track_x + track_w + 12.0, cy - 7.0, 12.0, FAINT);
+        let f = if dur > 0.0 { clamp(t / dur, 0.0, 1.0) as f32 } else { 0.0 };
+        ui::rect(track_x, cy - 2.0, track_w, 4.0, 2.0, RAISED);
+        ui::rect(track_x, cy - 2.0, track_w * f, 4.0, 2.0, ACCENT);
+        let over = dur > 0.0 && hit(mx, my, track_x - 6.0, cy - 12.0, track_w + 12.0, 24.0);
+        if over || drag == 1 {
+            ui::circle(track_x + track_w * f, cy, 6.0, TEXT);
+            hand = true;
         }
+        if over && click { drag = 1; }
+        if drag == 1 { drag_value = clamp((mx - track_x) / track_w, 0.0, 1.0) * dur; }
     }
 
     ui::rect(vx - 26.0, cy - 4.0, 5.0, 8.0, 1.0, MUTED);
@@ -359,9 +359,8 @@ fn main() {
         ui::input();
         input();
         draw();
-        let waiting = search::state() == search::BUSY || player::loading();
         let playing = !player::idle() && !player::paused();
-        ui::wait(if drag != 0 { 0.0 } else if waiting { 0.25 } else if playing { 0.5 } else { -1.0 });
+        ui::wait(if drag != 0 { 0.0 } else if player::loading() { 1.0 / 30.0 } else if search::state() == search::BUSY { 0.25 } else if playing { 0.5 } else { -1.0 });
     }
     player::close();
     ui::close();
