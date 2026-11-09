@@ -17,7 +17,8 @@ cmake -S ~/goose -B ~/goose/build -DCMAKE_BUILD_TYPE=Release && cmake --build ~/
 ## Layout
 
 - `app/` the player: Goose source, the C shim over raylib in `app/native/`, the bundled Inter font
-- `site/` goslingplayer.com
+- `site/` goslingplayer.com, plain HTML/CSS/JS (`python3 -m http.server --directory site` to preview)
+- `design_system/` how the site looks and why, plus screenshot tools
 - `bench/` memory and CPU measurements against Tonal
 
 ## License
