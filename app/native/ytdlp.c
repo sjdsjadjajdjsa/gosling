@@ -21,6 +21,7 @@ enum { MISSING, BUSY, READY, FAILED };
 static atomic_int state = MISSING;
 static char own[1100];
 static char chosen[1100];
+static char js[1200];
 
 #ifdef __APPLE__
 static const char asset[] = "yt-dlp_macos";
@@ -31,6 +32,17 @@ static const char asset[] = "yt-dlp_linux";
 #endif
 
 static bool runnable(const char *path) { return access(path, X_OK) == 0; }
+
+static bool on_path(const char *name, char *out, size_t cap) {
+    const char *path = getenv("PATH"), *home = getenv("HOME");
+    char dirs[4096];
+    snprintf(dirs, sizeof dirs, "%s:/opt/homebrew/bin:/usr/local/bin:%s/.local/bin:%s/.deno/bin", path ? path : "", home ? home : "", home ? home : "");
+    for (char *save, *d = strtok_r(dirs, ":", &save); d; d = strtok_r(NULL, ":", &save)) {
+        snprintf(out, cap, "%s/%s", d, name);
+        if (access(out, X_OK) == 0) return true;
+    }
+    return false;
+}
 
 static bool search(char *out, size_t cap) {
     char exe[1024] = { 0 };
@@ -53,14 +65,7 @@ static bool search(char *out, size_t cap) {
     }
     const char *only = getenv("GOSLING_YTDLP_OWN");
     if (only && *only) return false;
-    const char *path = getenv("PATH"), *home = getenv("HOME");
-    char dirs[4096];
-    snprintf(dirs, sizeof dirs, "%s:/opt/homebrew/bin:/usr/local/bin:%s/.local/bin", path ? path : "", home ? home : "");
-    for (char *save, *d = strtok_r(dirs, ":", &save); d; d = strtok_r(NULL, ":", &save)) {
-        snprintf(out, cap, "%s/yt-dlp", d);
-        if (runnable(out)) return true;
-    }
-    return false;
+    return on_path("yt-dlp", out, cap);
 }
 
 static size_t write_file(char *p, size_t size, size_t n, void *f) { return fwrite(p, size, n, f); }
@@ -124,6 +129,10 @@ void ytdlp_init(void) {
     char data[1024], cache[1024];
     platform_paths(data, cache, sizeof data);
     mkdir(data, 0755);
+    static const char *runtimes[] = { "deno", "node", "bun" };
+    char found[1100];
+    for (size_t i = 0; i < sizeof runtimes / sizeof *runtimes && !js[0]; i++)
+        if (on_path(runtimes[i], found, sizeof found)) snprintf(js, sizeof js, "%s:%s", runtimes[i], found);
     snprintf(own, sizeof own, "%s/yt-dlp", data);
     if (search(chosen, sizeof chosen)) {
         state = READY;
@@ -135,6 +144,8 @@ void ytdlp_init(void) {
 }
 
 const char *ytdlp_path(void) { return chosen; }
+
+const char *ytdlp_js(void) { return js[0] ? js : NULL; }
 
 int ytdlp_ensure(void) {
     int s = state;

@@ -8,7 +8,8 @@
 
 static mpv_handle *mpv;
 static char last_url[2048];
-static bool retried, cookies, waiting;
+static bool waiting;
+static int attempt, winner = -1;
 static struct {
     bool paused, idle, loading, failed, ended;
     double duration;
@@ -29,18 +30,24 @@ static bool exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
-static bool firefox_has_cookies(const char *profiles) {
+static bool profile_has(const char *profiles, const char *file) {
     DIR *d = opendir(profiles);
     if (!d) return false;
     bool found = false;
     char p[1400];
     for (struct dirent *e; !found && (e = readdir(d));) {
         if (e->d_name[0] == '.') continue;
-        snprintf(p, sizeof p, "%s/%s/cookies.sqlite", profiles, e->d_name);
+        snprintf(p, sizeof p, "%s/%s/%s", profiles, e->d_name, file);
         found = exists(p);
     }
     closedir(d);
     return found;
+}
+
+static bool has_cookies(const char *name, const char *dir) {
+    if (!strcmp(name, "safari")) return true;
+    if (!strcmp(name, "firefox")) return profile_has(dir, "cookies.sqlite");
+    return profile_has(dir, "Cookies") || profile_has(dir, "Network/Cookies");
 }
 
 static const char *browser(void) {
@@ -71,7 +78,7 @@ static const char *browser(void) {
     for (size_t i = 0; i < sizeof places / sizeof *places; i++) {
         snprintf(p, sizeof p, "%s/%s", home, places[i][1]);
         if (!exists(p)) continue;
-        if (!strcmp(places[i][0], "firefox") && !firefox_has_cookies(p)) continue;
+        if (!has_cookies(places[i][0], p)) continue;
         return places[i][0];
     }
     return NULL;
@@ -87,14 +94,64 @@ static void load(const char *url) {
     mpv_set_property_async(mpv, 0, "pause", MPV_FORMAT_FLAG, &no);
 }
 
-static bool retry_with_cookies(void) {
-    if (retried || cookies || !strstr(last_url, "youtube.com/")) return false;
-    const char *b = browser();
-    if (!b) return false;
-    char raw[128];
-    snprintf(raw, sizeof raw, "cookies-from-browser=%s", b);
+static const char *clients[] = { NULL, "mweb", "web_music", "tv" };
+enum { CLIENTS = sizeof clients / sizeof *clients, ATTEMPTS = CLIENTS * 2 };
+
+static bool youtube(const char *url) { return strstr(url, "youtube.com/") || strstr(url, "youtu.be/"); }
+
+static void winner_file(char *out, size_t cap) {
+    char data[1024], cache[1024];
+    platform_paths(data, cache, sizeof data);
+    snprintf(out, cap, "%s/youtube-access", data);
+}
+
+static void remember(int n) {
+    if (n == winner) return;
+    winner = n;
+    char path[1100];
+    winner_file(path, sizeof path);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%d\n", n);
+    fclose(f);
+}
+
+static int recall(void) {
+    if (winner >= 0) return winner;
+    char path[1100];
+    winner_file(path, sizeof path);
+    FILE *f = fopen(path, "r");
+    int n = 0;
+    if (f) {
+        if (fscanf(f, "%d", &n) != 1 || n < 0 || n >= ATTEMPTS) n = 0;
+        fclose(f);
+    }
+    return winner = n;
+}
+
+static bool access_options(int n) {
+    const char *b = n >= CLIENTS ? browser() : NULL;
+    if (n >= CLIENTS && !b) return false;
+    char raw[512] = "";
+    size_t len = 0;
+    const char *js = ytdlp_js();
+    if (js) len += snprintf(raw + len, sizeof raw - len, "js-runtimes=%s,", js);
+    const char *client = clients[n % CLIENTS];
+    if (client) len += snprintf(raw + len, sizeof raw - len, "extractor-args=youtube:player_client=%s,", client);
+    if (b) len += snprintf(raw + len, sizeof raw - len, "cookies-from-browser=%s,", b);
+    if (len) raw[len - 1] = 0;
     mpv_set_property_string(mpv, "ytdl-raw-options", raw);
-    retried = cookies = true;
+    return true;
+}
+
+static bool retry_youtube(void) {
+    if (!youtube(last_url)) return false;
+    int first = recall();
+    for (;;) {
+        attempt = (attempt + 1) % ATTEMPTS;
+        if (attempt == first) return false;
+        if (access_options(attempt)) break;
+    }
     load(last_url);
     return true;
 }
@@ -168,6 +225,10 @@ static void go(void) {
         st.failed = true;
         return;
     }
+    if (youtube(last_url)) {
+        attempt = recall();
+        if (!access_options(attempt)) access_options(attempt = 0);
+    }
     load(last_url);
 }
 
@@ -203,10 +264,13 @@ void player_update(void) {
         if (e->event_id == MPV_EVENT_NONE) break;
         switch (e->event_id) {
         case MPV_EVENT_PROPERTY_CHANGE: changed(e->data, e->reply_userdata); break;
-        case MPV_EVENT_PLAYBACK_RESTART: st.loading = false; break;
+        case MPV_EVENT_PLAYBACK_RESTART:
+              if (st.loading && youtube(last_url)) remember(attempt);
+              st.loading = false;
+              break;
         case MPV_EVENT_END_FILE: {
             mpv_event_end_file *end = e->data;
-            if (end->reason == MPV_END_FILE_REASON_ERROR && retry_with_cookies()) break;
+            if (end->reason == MPV_END_FILE_REASON_ERROR && retry_youtube()) break;
             st.loading = false;
             if (end->reason == MPV_END_FILE_REASON_ERROR) st.failed = true;
             if (end->reason == MPV_END_FILE_REASON_EOF) st.ended = true;
@@ -219,7 +283,6 @@ void player_update(void) {
 
 void player_load(gs_str url) {
     gs_cstr(url, last_url, sizeof last_url);
-    retried = false;
     st.failed = false;
     st.ended = false;
     if (remote(last_url) && ytdlp_ensure() != 2) {

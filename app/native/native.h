@@ -63,6 +63,7 @@ int32_t scan_changes(void);
 void np_init(void);
 void ytdlp_init(void);
 const char *ytdlp_path(void);
+const char *ytdlp_js(void);
 int ytdlp_ensure(void);
 int ytdlp_state(void);
 void discord_init(bool on);
