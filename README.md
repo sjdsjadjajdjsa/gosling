@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Small. Loud enough.</b><br>
-  One small app, drawn on the GPU, played by mpv.
+  One small app, drawn natively, played by mpv.
 </p>
 
 <p align="center">
@@ -30,13 +30,13 @@
 ## Made of a few good parts
 
 - [**Goose**](https://github.com/aardappel/goose): a memory-safe language with no heap. The whole app.
-- [**raylib**](https://www.raylib.com): draws every pixel on the GPU.
+- **Native drawing**: Core Graphics and Core Text on macOS, [raylib](https://www.raylib.com) on Linux.
 - [**mpv**](https://mpv.io): plays anything you throw at it, with [yt-dlp](https://github.com/yt-dlp/yt-dlp) for streams.
 - **libcurl** and **yyjson**: search.
 
 ## Build
 
-Needs Goose (built from source), libmpv, yyjson, libcurl, SQLite, FFmpeg (libavformat, for local file tags) and pkg-config. On Linux also libsystemd (media keys). raylib is vendored as a submodule and built static.
+Needs Goose (built from source), libmpv, yyjson, libcurl, SQLite, FFmpeg (libavformat, for local file tags) and pkg-config. On Linux also libsystemd (media keys). On Linux, raylib is vendored as a submodule and built static.
 
 ```sh
 brew install cmake pkg-config mpv yyjson yt-dlp sqlite ffmpeg

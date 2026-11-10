@@ -190,3 +190,43 @@ void ui_close(void) {
     nfonts = 0;
     CloseWindow();
 }
+
+typedef struct { Image image; Texture2D texture; bool uploaded; } picture;
+
+void *ui_image_decode(const unsigned char *data, size_t len, int px) {
+    const char *type = len > 4 && !memcmp(data, "\x89PNG", 4) ? ".png" : ".jpg";
+    Image img = LoadImageFromMemory(type, data, (int)len);
+    if (!img.data) return NULL;
+    int side = img.width < img.height ? img.width : img.height;
+    if (img.width != img.height) ImageCrop(&img, (Rectangle){ (float)(img.width - side) / 2, (float)(img.height - side) / 2, (float)side, (float)side });
+    if (side != px) ImageResize(&img, px, px);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    picture *p = calloc(1, sizeof *p);
+    if (!p) {
+        UnloadImage(img);
+        return NULL;
+    }
+    p->image = img;
+    return p;
+}
+
+void ui_image_draw(void *image, float x, float y, float size, float radius) {
+    (void)radius;
+    picture *p = image;
+    if (!p->uploaded) {
+        p->texture = LoadTextureFromImage(p->image);
+        SetTextureFilter(p->texture, TEXTURE_FILTER_BILINEAR);
+        UnloadImage(p->image);
+        p->image = (Image){ 0 };
+        p->uploaded = true;
+    }
+    DrawTexturePro(p->texture, (Rectangle){ 0, 0, (float)p->texture.width, (float)p->texture.height }, (Rectangle){ x, y, size, size }, (Vector2){ 0 }, 0, WHITE);
+}
+
+void ui_image_free(void *image) {
+    picture *p = image;
+    if (!p) return;
+    if (p->uploaded) UnloadTexture(p->texture);
+    else UnloadImage(p->image);
+    free(p);
+}

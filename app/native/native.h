@@ -46,6 +46,12 @@ static inline const char *track_field(const track *t, int field) {
 static inline bool track_local(const track *t) { return t->key[0] == '/'; }
 
 void ui_wake(void);
+void ui_rect(float x, float y, float w, float h, float r, uint32_t color);
+void ui_circle(float x, float y, float r, uint32_t color);
+void ui_triangle(float x1, float y1, float x2, float y2, float x3, float y3, uint32_t color);
+void *ui_image_decode(const unsigned char *data, size_t len, int px);
+void ui_image_draw(void *image, float x, float y, float size, float radius);
+void ui_image_free(void *image);
 bool search_track(int32_t i, track *out);
 int32_t search_count(void);
 void art_draw(const char *url, float x, float y, float size, uint32_t bg, uint32_t fg);

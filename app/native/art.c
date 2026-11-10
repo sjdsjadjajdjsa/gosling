@@ -1,21 +1,19 @@
 #include <curl/curl.h>
 #include <pthread.h>
-#include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "native.h"
 
 enum { SLOTS = 48, PX = 56 };
-enum { EMPTY, WANTED, LOADING, DECODED, READY, FAILED };
+enum { EMPTY, WANTED, LOADING, READY, FAILED };
 
 typedef struct {
     uint64_t hash;
     int state;
     unsigned used;
     char url[512];
-    Image image;
-    Texture2D texture;
+    void *image;
 } slot;
 
 static slot slots[SLOTS];
@@ -83,17 +81,6 @@ static bool fetch(const char *url, buffer *b) {
     return ok == CURLE_OK && status == 200 && b->len > 0;
 }
 
-static Image decode(const buffer *b) {
-    const char *type = b->len > 4 && !memcmp(b->data, "\x89PNG", 4) ? ".png" : ".jpg";
-    Image img = LoadImageFromMemory(type, b->data, (int)b->len);
-    if (!img.data) return img;
-    int side = img.width < img.height ? img.width : img.height;
-    if (img.width != img.height) ImageCrop(&img, (Rectangle){ (float)(img.width - side) / 2, (float)(img.height - side) / 2, (float)side, (float)side });
-    if (side > PX * 2) ImageResize(&img, PX * 2, PX * 2);
-    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
-    return img;
-}
-
 static void *work(void *arg) {
     (void)arg;
     for (;;) {
@@ -125,15 +112,15 @@ static void *work(void *arg) {
                 }
             }
         }
-        Image img = ok ? decode(&b) : (Image){ 0 };
+        void *img = ok ? ui_image_decode(b.data, b.len, PX * 2) : NULL;
         free(b.data);
 
         pthread_mutex_lock(&lock);
         if (job->hash == hash && job->state == LOADING) {
             job->image = img;
-            job->state = img.data ? DECODED : FAILED;
-        } else if (img.data) {
-            UnloadImage(img);
+            job->state = img ? READY : FAILED;
+        } else if (img) {
+            ui_image_free(img);
         }
         pthread_mutex_unlock(&lock);
         ui_wake();
@@ -155,8 +142,8 @@ static slot *find(const char *url) {
         if (!victim || slots[i].used < victim->used) victim = &slots[i];
     }
     if (!victim) return NULL;
-    if (victim->state == READY) UnloadTexture(victim->texture);
-    if (victim->state == DECODED) UnloadImage(victim->image);
+    if (victim->state == READY) ui_image_free(victim->image);
+    victim->image = NULL;
     victim->hash = h;
     victim->state = WANTED;
     snprintf(victim->url, sizeof victim->url, "%s", url);
@@ -169,40 +156,30 @@ static slot *find(const char *url) {
     return victim;
 }
 
-static void note(float x, float y, float s, Color c) {
+static void note(float x, float y, float s, uint32_t c) {
     float u = s / 40.0f;
-    DrawCircleV((Vector2){ x + 16 * u, y + 26 * u }, 4.5f * u, c);
-    DrawRectangleRec((Rectangle){ x + 19 * u, y + 11 * u, 2.2f * u, 15.5f * u }, c);
-    DrawTriangle((Vector2){ x + 19 * u, y + 11 * u }, (Vector2){ x + 21.2f * u, y + 18 * u }, (Vector2){ x + 27 * u, y + 15 * u }, c);
-}
-
-static Color rgba(uint32_t c) {
-    return (Color){ (unsigned char)(c >> 24), (unsigned char)(c >> 16), (unsigned char)(c >> 8), (unsigned char)c };
+    ui_circle(x + 16 * u, y + 26 * u, 4.5f * u, c);
+    ui_rect(x + 19 * u, y + 11 * u, 2.2f * u, 15.5f * u, 0, c);
+    ui_triangle(x + 19 * u, y + 11 * u, x + 21.2f * u, y + 18 * u, x + 27 * u, y + 15 * u, c);
 }
 
 void art_draw(const char *url, float x, float y, float size, uint32_t bg, uint32_t fg) {
-    Rectangle dst = { x, y, size, size };
-    slot *s = NULL;
+    void *image = NULL;
     if (url && url[0]) {
         pthread_mutex_lock(&lock);
-        s = find(url);
+        slot *s = find(url);
         if (s) {
             s->used = ++tick;
-            if (s->state == DECODED) {
-                s->texture = LoadTextureFromImage(s->image);
-                SetTextureFilter(s->texture, TEXTURE_FILTER_BILINEAR);
-                UnloadImage(s->image);
-                s->state = READY;
-            }
+            if (s->state == READY) image = s->image;
         }
         pthread_mutex_unlock(&lock);
     }
-    if (s && s->state == READY) {
-        DrawTexturePro(s->texture, (Rectangle){ 0, 0, (float)s->texture.width, (float)s->texture.height }, dst, (Vector2){ 0 }, 0, WHITE);
+    if (image) {
+        ui_image_draw(image, x, y, size, 6);
         return;
     }
-    DrawRectangleRounded(dst, 0.12f, 6, rgba(bg));
-    note(x + size * 0.1f, y + size * 0.1f, size * 0.8f, rgba(fg));
+    ui_rect(x, y, size, size, 6, bg);
+    note(x + size * 0.1f, y + size * 0.1f, size * 0.8f, fg);
 }
 
 bool art_file(const char *url, char *out, size_t cap) {

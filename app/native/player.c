@@ -1,6 +1,7 @@
 #include <mpv/client.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #ifdef __APPLE__
@@ -56,6 +57,20 @@ static bool find_ytdlp(char *out, size_t cap) {
     return false;
 }
 
+static bool firefox_has_cookies(const char *profiles) {
+    DIR *d = opendir(profiles);
+    if (!d) return false;
+    bool found = false;
+    char p[1400];
+    for (struct dirent *e; !found && (e = readdir(d));) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(p, sizeof p, "%s/%s/cookies.sqlite", profiles, e->d_name);
+        found = exists(p);
+    }
+    closedir(d);
+    return found;
+}
+
 static const char *browser(void) {
     const char *forced = getenv("GOSLING_COOKIES_BROWSER");
     if (forced && *forced) return forced;
@@ -83,7 +98,9 @@ static const char *browser(void) {
     char p[1200];
     for (size_t i = 0; i < sizeof places / sizeof *places; i++) {
         snprintf(p, sizeof p, "%s/%s", home, places[i][1]);
-        if (exists(p)) return places[i][0];
+        if (!exists(p)) continue;
+        if (!strcmp(places[i][0], "firefox") && !firefox_has_cookies(p)) continue;
+        return places[i][0];
     }
     return NULL;
 }
@@ -110,7 +127,10 @@ static bool retry_with_cookies(void) {
     return true;
 }
 
-bool player_open(void) {
+static double volume_wanted = 100;
+
+static bool start(void) {
+    if (mpv) return true;
     mpv = mpv_create();
     if (!mpv) return false;
     option("vid", "no");
@@ -150,12 +170,22 @@ bool player_open(void) {
             option(pair, eq + 1);
         }
     }
-    if (mpv_initialize(mpv) < 0) return false;
+    if (mpv_initialize(mpv) < 0) {
+        mpv_terminate_destroy(mpv);
+        mpv = NULL;
+        return false;
+    }
     mpv_observe_property(mpv, P_PAUSE, "pause", MPV_FORMAT_FLAG);
     mpv_observe_property(mpv, P_DURATION, "duration", MPV_FORMAT_DOUBLE);
     mpv_observe_property(mpv, P_TITLE, "media-title", MPV_FORMAT_STRING);
     mpv_observe_property(mpv, P_IDLE, "idle-active", MPV_FORMAT_FLAG);
     mpv_set_wakeup_callback(mpv, wake, NULL);
+    mpv_set_property(mpv, "volume", MPV_FORMAT_DOUBLE, &volume_wanted);
+    return true;
+}
+
+bool player_open(void) {
+    st.idle = true;
     return true;
 }
 
@@ -174,6 +204,7 @@ static void changed(mpv_event_property *p, uint64_t id) {
 }
 
 void player_update(void) {
+    if (!mpv) return;
     for (;;) {
         mpv_event *e = mpv_wait_event(mpv, 0);
         if (e->event_id == MPV_EVENT_NONE) break;
@@ -196,31 +227,41 @@ void player_update(void) {
 void player_load(gs_str url) {
     gs_cstr(url, last_url, sizeof last_url);
     retried = false;
+    if (!start()) {
+        st.failed = true;
+        return;
+    }
     load(last_url);
 }
 
 void player_pause(bool pause) {
+    if (!mpv) return;
     int p = pause;
     mpv_set_property_async(mpv, 0, "pause", MPV_FORMAT_FLAG, &p);
 }
 
 void player_toggle(void) {
+    if (!mpv) return;
     int pause = !st.paused;
     mpv_set_property_async(mpv, 0, "pause", MPV_FORMAT_FLAG, &pause);
 }
 
 void player_seek(double secs) {
+    if (!mpv) return;
     char buf[64];
     snprintf(buf, sizeof buf, "%.3f", secs < 0 ? 0 : secs);
     const char *cmd[] = { "seek", buf, "absolute", NULL };
     mpv_command_async(mpv, 0, cmd);
 }
 
-void player_volume(double volume) { mpv_set_property_async(mpv, 0, "volume", MPV_FORMAT_DOUBLE, &volume); }
+void player_volume(double volume) {
+    volume_wanted = volume;
+    if (mpv) mpv_set_property_async(mpv, 0, "volume", MPV_FORMAT_DOUBLE, &volume);
+}
 
 double player_time(void) {
     double t = 0;
-    if (!st.idle) mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &t);
+    if (mpv && !st.idle) mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &t);
     return t;
 }
 
