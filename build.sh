@@ -44,9 +44,9 @@ fi
 "$GOOSE" -o "$OUT/gosling.c" app/gosling.goose
 "$GOOSE" --emit-runtime "$OUT/goose_runtime.c"
 
-$CC $OPT -std=c23 -D_GNU_SOURCE -w \
+$CC $OPT -std=c23 -D_GNU_SOURCE -DGOSLING_DISCORD_APP="\"${GOSLING_DISCORD_APP:-}\"" -w \
     "$OUT/gosling.c" "$OUT/goose_runtime.c" \
-    app/native/player.c app/native/search.c app/native/lib.c app/native/art.c app/native/scan.c \
+    app/native/player.c app/native/search.c app/native/lib.c app/native/art.c app/native/scan.c app/native/discord.c \
     -I"$RL" -I"$RL/external/glfw/include" -Iapp/native $(pkg-config --cflags $PKGS) \
     $PLATFORM $UI \
     $(pkg-config --libs $PKGS) $SYS_LIBS -lm -pthread \

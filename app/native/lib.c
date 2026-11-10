@@ -367,6 +367,7 @@ void lib_now_playing(double duration, double position, bool playing) {
         snprintf(title, sizeof title, "%s", t->title);
     }
     np_update(t, duration, position, playing);
+    discord_update(t && t->title[0] ? t : NULL, duration, position, playing);
 }
 
 int32_t lib_playlists(void) { return playlist_count; }
@@ -474,3 +475,12 @@ bool lib_is_dir(gs_str path) {
 static double np_last;
 int32_t lib_np_command(void) { return np_command(&np_last); }
 double lib_np_value(void) { return np_last; }
+
+void lib_discord_init(void) { discord_init(lib_get((gs_str){ (const uint8_t *)"discord", 7 }, 1) != 0); }
+bool lib_discord_available(void) { return discord_available(); }
+bool lib_discord_on(void) { return lib_get((gs_str){ (const uint8_t *)"discord", 7 }, 1) != 0; }
+void lib_discord_toggle(void) {
+    bool on = !lib_discord_on();
+    lib_set((gs_str){ (const uint8_t *)"discord", 7 }, on);
+    discord_enable(on);
+}

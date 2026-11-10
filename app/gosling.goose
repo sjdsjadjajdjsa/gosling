@@ -343,7 +343,20 @@ fn sidebar(h: f32, mx: f32, my: f32, click: bool) {
         }
     }
     y += 24.0;
-    ui::clip(0.0, y, SIDE, h - BAR_H - y);
+    let list_bottom = if lib::discord_available() { h - BAR_H - ITEM - 16.0 } else { h - BAR_H };
+    if lib::discord_available() {
+        let dy = h - BAR_H - ITEM - 12.0;
+        let on = lib::discord_on();
+        let over = hit(mx, my, 12.0, dy, SIDE - 24.0, ITEM);
+        if over { hand = true; }
+        ui::text("Discord status", 24.0, dy + 9.0, 13.0, if over { TEXT } else { MUTED });
+        let sx = SIDE - 52.0;
+        let sy = dy + 8.0;
+        ui::rect(sx, sy, 28.0, 16.0, 8.0, if on { ACCENT } else { RAISED });
+        ui::circle(if on { sx + 20.0 } else { sx + 8.0 }, sy + 8.0, 6.0, if on { ON_ACCENT } else { MUTED });
+        if over && click { lib::discord_toggle(); }
+    }
+    ui::clip(0.0, y, SIDE, list_bottom - y);
     var buf: u8[256] = [0; 256];
     for i: i32 in 0..lib::playlists() {
         let id = lib::playlist_id(i);
@@ -717,6 +730,7 @@ fn main() {
     search::init();
     lib::open();
     lib::np_init();
+    lib::discord_init();
     volume = lib::get("volume", 80.0);
     player::volume(volume);
     if lib::folders() > 0 { lib::rescan(); }
