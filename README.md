@@ -67,9 +67,7 @@ Click a song to play it and the rest of the list after it. The heart likes it, t
 ## Layout
 
 - `app/`: the player. Goose source, the C shim over raylib in `app/native/`, the bundled Inter font.
-- `site/`: goslingplayer.com, plain HTML/CSS/JS (`python3 -m http.server --directory site` to preview).
-- `design_system/`: how the site looks and why, plus screenshot and banner tools.
 
 ## License
 
-[FSL-1.1-MIT](LICENSE): source available now, MIT two years after each release. Inter is under the [SIL Open Font License](app/fonts/Inter-LICENSE.txt), Bricolage Grotesque under the [SIL Open Font License](site/fonts/OFL.txt).
+[FSL-1.1-MIT](LICENSE): source available now, MIT two years after each release. Inter is under the [SIL Open Font License](app/fonts/Inter-LICENSE.txt).
