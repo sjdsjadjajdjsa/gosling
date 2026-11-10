@@ -36,28 +36,33 @@
 
 ## Build
 
-Needs Goose (built from source), libmpv, yyjson, libcurl and pkg-config. raylib is vendored as a submodule and built static.
+Needs Goose (built from source), libmpv, yyjson, libcurl, SQLite, FFmpeg (libavformat, for local file tags) and pkg-config. On Linux also libsystemd (media keys). raylib is vendored as a submodule and built static.
 
 ```sh
-brew install cmake pkg-config mpv yyjson yt-dlp
+brew install cmake pkg-config mpv yyjson yt-dlp sqlite ffmpeg
 git clone https://github.com/aardappel/goose ~/goose
 cmake -S ~/goose -B ~/goose/build -DCMAKE_BUILD_TYPE=Release && cmake --build ~/goose/build -j
 git clone --recursive https://github.com/sjdsjadjajdjsa/gosling && cd gosling
 ./build.sh && ./build/gosling
 ```
 
+`./package_mac.sh` makes `build/Gosling.app` with its libraries inside (needs `brew install dylibbundler`). Linux builds and releases run on GitHub Actions.
+
 `./build/gosling <file or link>` starts playing it. `GOSLING_MPV_OPTIONS=ao=null` passes extra mpv options (comma separated), for tests and benchmarks.
 
 ## Keys
 
-| Key | With text in search | With search empty |
-| --- | --- | --- |
-| Type | Search | Search |
-| Enter | Search, or play the selected result | |
-| Up / Down | Select a result | |
-| Esc | Clear | |
-| Space | | Play / pause |
-| Left / Right | | Seek 5 seconds |
+| Key | Does |
+| --- | --- |
+| Type, Enter | Search, or play a pasted link |
+| Up / Down, Enter | Pick a song and play it |
+| Esc | Clear the search |
+| Space | Play / pause (with search empty) |
+| Left / Right | Seek 5 seconds (with search empty) |
+| Cmd/Ctrl + Left / Right | Previous / next song |
+| Media keys | Play, pause, next, previous, also from Control Center or MPRIS |
+
+Click a song to play it and the rest of the list after it. The heart likes it, the + adds it to up next or a playlist. Drop a file to play it, or a folder to add it to Local files.
 
 ## Layout
 

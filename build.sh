@@ -15,11 +15,15 @@ mkdir -p "$OBJ"
 case "$(uname -s)" in
 Darwin)
     GLFW_LANG="-x objective-c"
-    SYS_LIBS="-framework Cocoa -framework IOKit -framework OpenGL -framework CoreVideo -framework QuartzCore"
+    PLATFORM="-fobjc-arc app/native/platform_mac.m"
+    SYS_LIBS="-framework Cocoa -framework IOKit -framework OpenGL -framework CoreVideo -framework QuartzCore -framework MediaPlayer"
+    PKGS="mpv yyjson libcurl sqlite3 libavformat libavutil"
     ;;
 *)
     GLFW_LANG=""
+    PLATFORM="app/native/platform_linux.c"
     SYS_LIBS="-lGL -lX11 -lm -ldl -lpthread"
+    PKGS="mpv yyjson libcurl sqlite3 libavformat libavutil libsystemd"
     ;;
 esac
 
@@ -37,16 +41,15 @@ if [ ! -f "$OBJ/libraylib.a" ]; then
     ar rcs "$OBJ/libraylib.a" "$OBJ"/rl_*.o
 fi
 
-inc() { echo "-I$(pkg-config --variable=includedir "$1")"; }
-lib() { echo "-L$(pkg-config --variable=libdir "$1")"; }
-
 "$GOOSE" -o "$OUT/gosling.c" app/gosling.goose
 "$GOOSE" --emit-runtime "$OUT/goose_runtime.c"
 
 $CC $OPT -std=c23 -w \
-    "$OUT/gosling.c" "$OUT/goose_runtime.c" app/native/*.c \
-    -I"$RL" -I"$RL/external/glfw/include" $(inc mpv) $(inc yyjson) \
-    "$OBJ/libraylib.a" $(lib mpv) $(lib yyjson) -lmpv -lyyjson -lcurl $SYS_LIBS -lm -pthread \
+    "$OUT/gosling.c" "$OUT/goose_runtime.c" \
+    app/native/ui.c app/native/player.c app/native/search.c app/native/lib.c app/native/art.c app/native/scan.c \
+    -I"$RL" -I"$RL/external/glfw/include" -Iapp/native $(pkg-config --cflags $PKGS) \
+    $PLATFORM \
+    "$OBJ/libraylib.a" $(pkg-config --libs $PKGS) $SYS_LIBS -lm -pthread \
     -o "$OUT/gosling"
 strip "$OUT/gosling" 2>/dev/null || true
 ls -l "$OUT/gosling"

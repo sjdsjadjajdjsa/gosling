@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-19 cmake pkg-config libmpv-dev libyyjson-dev libcurl4-openssl-dev \
+            libsqlite3-dev libavformat-dev libavutil-dev libsystemd-dev libgl-dev libx11-dev libxrandr-dev \
+            libxinerama-dev libxcursor-dev libxi-dev
+      - name: Cache Goose
+        id: goose
+        uses: actions/cache@v4
+        with:
+          path: ~/goose/build/goose
+          key: goose-${{ runner.os }}-${{ hashFiles('.github/goose-rev') }}
+      - name: Build Goose
+        if: steps.goose.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/aardappel/goose ~/goose
+          git -C ~/goose checkout "$(cat .github/goose-rev)"
+          CC=clang-19 CXX=clang++-19 cmake -S ~/goose -B ~/goose/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build ~/goose/build -j --target goose
+      - name: Build Gosling
+        run: CC=clang-19 ./build.sh
+      - name: Package
+        run: |
+          mkdir -p dist/gosling
+          cp build/gosling LICENSE README.md dist/gosling/
+          tar -C dist -czf gosling-linux-x86_64.tar.gz gosling
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gosling-linux-x86_64
+          path: gosling-linux-x86_64.tar.gz
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" gosling-linux-x86_64.tar.gz --generate-notes || gh release upload "${{ github.ref_name }}" gosling-linux-x86_64.tar.gz --clobber

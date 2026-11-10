@@ -8,11 +8,6 @@
 
 enum { MAX = 50 };
 
-typedef struct {
-    char id[32], title[256], artist[256], album[256], thumb[512];
-    double duration;
-} track;
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static track results[MAX];
 static int count, state, generation;
@@ -84,7 +79,7 @@ static bool parse_song(yyjson_val *item, track *t) {
     const char *id = yyjson_get_str(path(item, "playlistItemData.videoId"));
     if (!id) id = yyjson_get_str(path(yyjson_arr_get(yyjson_obj_get(first, "runs"), 0), "navigationEndpoint.watchEndpoint.videoId"));
     if (!id || !t->title[0]) return false;
-    snprintf(t->id, sizeof t->id, "%s", id);
+    snprintf(t->key, sizeof t->key, "%s", id);
     yyjson_val *column;
     size_t c, cmax;
     yyjson_arr_foreach(columns, c, cmax, column) {
@@ -251,8 +246,7 @@ int32_t search_field(int32_t i, int32_t field, char out[256]) {
     pthread_mutex_lock(&lock);
     int32_t n = 0;
     if (i >= 0 && i < count) {
-        const char *s = field == 0 ? results[i].title : field == 1 ? results[i].artist : field == 2 ? results[i].album : results[i].id;
-        n = gs_copy(out, 256, s);
+        n = gs_copy(out, 256, track_field(&results[i], field));
     }
     pthread_mutex_unlock(&lock);
     return n;
@@ -263,4 +257,12 @@ double search_duration(int32_t i) {
     double d = i >= 0 && i < count ? results[i].duration : 0;
     pthread_mutex_unlock(&lock);
     return d;
+}
+
+bool search_track(int32_t i, track *out) {
+    pthread_mutex_lock(&lock);
+    bool ok = i >= 0 && i < count;
+    if (ok) *out = results[i];
+    pthread_mutex_unlock(&lock);
+    return ok;
 }

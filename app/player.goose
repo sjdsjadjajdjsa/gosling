@@ -4,6 +4,7 @@ extern fn open() -> bool = "player_open";
 extern fn update() = "player_update";
 extern fn load(url: const u8[:]) = "player_load";
 extern fn toggle() = "player_toggle";
+extern fn pause(yes: bool) = "player_pause";
 extern fn seek(secs: f64) = "player_seek";
 extern fn volume(v: f64) = "player_volume";
 extern fn time() -> f64 = "player_time";
