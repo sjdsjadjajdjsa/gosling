@@ -15,7 +15,7 @@ Both apps search "lofi chill" on YouTube Music and play the first song, with aud
 
 | | Memory | CPU in 20 s |
 | --- | --- | --- |
-| Gosling | 104 to 105 MB | 0.30 s |
+| Gosling | 80 to 83 MB | 0.32 to 0.37 s |
 | Tonal 0.11.5 (55 MB) + its mpv (226 to 229 MB) | 280 to 284 MB | 0.92 to 1.27 s |
 
-Playing, Gosling uses under 40% of the memory and about a third of the CPU. Since the switch from raylib to native macOS drawing, Gosling idles at 31 MB, and mpv only starts when the first song plays. An empty native window on macOS is 18 MB, so that is the floor. Streaming numbers below are from before the switch and still need a rerun once YouTube stops blocking this Mac.
+Playing, Gosling uses under 30% of the memory and about a third of the CPU. Since the switch from raylib to native macOS drawing, Gosling idles at 31 MB, and mpv only starts when the first song plays. An empty native window on macOS is 18 MB, so that is the floor.
