@@ -175,10 +175,10 @@ void art_draw(const char *url, float x, float y, float size, uint32_t bg, uint32
         pthread_mutex_unlock(&lock);
     }
     if (image) {
-        ui_image_draw(image, x, y, size, 6);
+        ui_image_draw(image, x, y, size, size * 0.18f);
         return;
     }
-    ui_rect(x, y, size, size, 6, bg);
+    ui_rect(x, y, size, size, size * 0.18f, bg);
     note(x + size * 0.1f, y + size * 0.1f, size * 0.8f, fg);
 }
 

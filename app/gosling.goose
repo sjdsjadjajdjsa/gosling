@@ -35,6 +35,7 @@ var volume: f64 = 80.0;
 var drag: i32;
 var drag_value: f64;
 var hand: bool;
+var muted: bool;
 var typing: bool;
 var menu_row: i32 = -1;
 var menu_x: f32;
@@ -237,25 +238,11 @@ fn heart_button(cx: f32, cy: f32, on: bool, color: u32) {
     ui::heart(cx, cy, 16.0, on, if on { LOVE } else { color });
 }
 
-fn plus(cx: f32, cy: f32, color: u32) {
-    ui::rect(cx - 7.0, cy - 1.0, 14.0, 2.0, 1.0, color);
-    ui::rect(cx - 1.0, cy - 7.0, 2.0, 14.0, 1.0, color);
-}
-
-fn skip(cx: f32, cy: f32, forward: bool, color: u32) {
-    if forward {
-        ui::triangle(cx - 6.0, cy - 7.0, cx - 6.0, cy + 7.0, cx + 5.0, cy, color);
-        ui::rect(cx + 5.0, cy - 7.0, 2.5, 14.0, 1.0, color);
-    } else {
-        ui::triangle(cx + 6.0, cy - 7.0, cx - 5.0, cy, cx + 6.0, cy + 7.0, color);
-        ui::rect(cx - 7.5, cy - 7.0, 2.5, 14.0, 1.0, color);
-    }
-}
-
 fn button(label: const u8[:], x: f32, y: f32, primary: bool, mx: f32, my: f32, click: bool) -> f32, bool {
     let w = ui::text_width(label, 13.0) + 28.0;
     let over = hit(mx, my, x, y, w, 32.0);
-    ui::rect(x, y, w, 32.0, 16.0, if primary { ACCENT } else if over { RAISED } else { SURFACE });
+    let f = ui::fade(50000 + (x as i32), over);
+    ui::rect(x, y, w, 32.0, 16.0, if primary { ui::mix(ACCENT, 0xffffffff, f) } else { ui::mix(SURFACE, RAISED, f) });
     ui::text(label, x + 14.0, y + 8.0, 13.0, if primary { ON_ACCENT } else { TEXT });
     if over { hand = true; }
     return w, over && click;
@@ -263,8 +250,9 @@ fn button(label: const u8[:], x: f32, y: f32, primary: bool, mx: f32, my: f32, c
 
 fn message(text: const u8[:], x: f32, w: f32, h: f32) {
     let top = list_top();
-    let y = top + (h - BAR_H - top) / 2.0 - 30.0;
-    ui::text(text, x + (w - ui::text_width(text, 15.0)) / 2.0, y, 15.0, FAINT);
+    let cy = top + (h - BAR_H - top) / 2.0 - 24.0;
+    ui::icon(ui::I_BIRD, x + w / 2.0, cy - 30.0, 44.0, 0, RAISED);
+    ui::text(text, x + (w - ui::text_width(text, 14.0)) / 2.0, cy + 6.0, 14.0, FAINT);
 }
 
 fn search_box(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
@@ -277,9 +265,7 @@ fn search_box(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
         if click && renaming != 0 { finish_rename(); }
     }
     ui::rect(x, y, bw, bh, 20.0, SURFACE);
-    ui::circle(x + 22.0, y + 19.0, 6.5, FAINT);
-    ui::circle(x + 22.0, y + 19.0, 4.5, SURFACE);
-    ui::triangle(x + 25.5, y + 23.0, x + 28.0, y + 27.5, x + 29.5, y + 25.5, FAINT);
+    ui::icon(ui::I_SEARCH, x + 22.0, y + 20.0, 18.0, 0, FAINT);
     let tx = x + 44.0;
     let room = bw - 60.0;
     let caret = renaming == 0;
@@ -293,35 +279,47 @@ fn search_box(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
     }
 }
 
-fn nav(label: const u8[:], y: f32, on: bool, mx: f32, my: f32, click: bool) -> bool {
+fn nav(label: const u8[:], icon: i32, y: f32, on: bool, mx: f32, my: f32, click: bool) -> bool {
     let x = 12.0;
     let w = SIDE - 24.0;
     let over = hit(mx, my, x, y, w, ITEM);
-    if on || over { ui::rect(x, y, w, ITEM, 8.0, if on { SURFACE } else { BG }); }
-    ui::text_fit(label, x + 12.0, y + 8.0, 13.0, if on { TEXT } else { MUTED }, w - 24.0);
+    let f = ui::fade(60000 + (y as i32), over);
+    if on {
+        ui::rect(x, y, w, ITEM, 8.0, SURFACE);
+    } else if f > 0.01 {
+        ui::rect(x, y, w, ITEM, 8.0, ui::mix(BG, SURFACE, f * 0.6));
+    }
+    let color = if on { TEXT } else { ui::mix(MUTED, TEXT, f) };
+    var tx: f32 = x + 12.0;
+    if icon >= -1 {
+        let ix = x + 20.0;
+        let iy = y + ITEM / 2.0;
+        if icon == -1 { ui::heart(ix, iy + 0.5, 15.0, false, color); } else { ui::icon(icon, ix, iy, 18.0, 0, color); }
+        tx = x + 38.0;
+    }
+    ui::text_fit(label, tx, y + 8.0, 13.0, color, w - (tx - x) - 8.0);
     if over { hand = true; }
     over && click
 }
 
 fn sidebar(h: f32, mx: f32, my: f32, click: bool) {
     ui::rect(0.0, 0.0, SIDE, h - BAR_H, 0.0, BAR);
-    ui::text("gosling", 24.0, 28.0, 20.0, MUTED);
     let v = lib::view();
     var y: f32 = TOP;
-    if nav("Search", y, v == lib::SEARCH, mx, my, click) { show(lib::SEARCH, 0); }
+    if nav("Search", ui::I_SEARCH, y, v == lib::SEARCH, mx, my, click) { show(lib::SEARCH, 0); }
     y += ITEM + 2.0;
-    if nav("Liked songs", y, v == lib::LIKED, mx, my, click) { show(lib::LIKED, 0); }
+    if nav("Liked songs", -1, y, v == lib::LIKED, mx, my, click) { show(lib::LIKED, 0); }
     y += ITEM + 2.0;
-    if nav("History", y, v == lib::HISTORY, mx, my, click) { show(lib::HISTORY, 0); }
+    if nav("History", ui::I_CLOCK, y, v == lib::HISTORY, mx, my, click) { show(lib::HISTORY, 0); }
     y += ITEM + 2.0;
-    if nav("Local files", y, v == lib::LOCAL, mx, my, click) { show(lib::LOCAL, 0); }
+    if nav("Local files", ui::I_FOLDER, y, v == lib::LOCAL, mx, my, click) { show(lib::LOCAL, 0); }
     y += ITEM + 2.0;
-    if nav("Up next", y, v == lib::QUEUE, mx, my, click) { show(lib::QUEUE, 0); }
+    if nav("Up next", ui::I_LIST, y, v == lib::QUEUE, mx, my, click) { show(lib::QUEUE, 0); }
     y += ITEM + 22.0;
     ui::text("Playlists", 24.0, y, 12.0, FAINT);
     let px = SIDE - 36.0;
     let over_new = hit(mx, my, px - 4.0, y - 8.0, 28.0, 28.0);
-    plus(px + 10.0, y + 6.0, if over_new { TEXT } else { FAINT });
+    ui::icon(ui::I_PLUS, px + 10.0, y + 7.0, 16.0, 0, if over_new { TEXT } else { FAINT });
     if over_new {
         hand = true;
         if click {
@@ -349,7 +347,7 @@ fn sidebar(h: f32, mx: f32, my: f32, click: bool) {
     for i: i32 in 0..lib::playlists() {
         let id = lib::playlist_id(i);
         let n = lib::playlist_name(i, buf);
-        if nav(buf[..n], y, v == lib::PLAYLIST && lib::view_playlist() == id, mx, my, click && my < h - BAR_H) { show(lib::PLAYLIST, id); }
+        if nav(buf[..n], -2, y, v == lib::PLAYLIST && lib::view_playlist() == id, mx, my, click && my < h - BAR_H) { show(lib::PLAYLIST, id); }
         y += ITEM + 2.0;
     }
     ui::unclip();
@@ -388,7 +386,7 @@ fn header(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
     var count: u8[>..] = [];
     format(count, n, if n == 1 { " song" } else { " songs" });
     if v == lib::LOCAL && lib::scanning() > 0 { count.append("  ·  scanning…"); }
-    ui::text(count, x, y + 30.0, 12.0, FAINT);
+    if n > 0 || lib::scanning() > 0 { ui::text(count, x, y + 30.0, 12.0, FAINT); }
 
     var bx = x0 + w - PAD;
     if v == lib::PLAYLIST {
@@ -513,12 +511,25 @@ fn list(x0: f32, w: f32, h: f32, mx: f32, my: f32, click: bool) {
         if y > bottom { break; }
         let over = hit(mx, my, x, y, rw, ROW) && my >= top && my < bottom && menu_row < 0;
         let current = lib::current_row(i);
-        let lit = over || current || i == selected || i == menu_row;
-        let bg = if lit { SURFACE } else { BG };
-        if lit { ui::rect(x, y + 2.0, rw, ROW - 4.0, 10.0, SURFACE); }
-        lib::art(i, x + 8.0, y + 8.0, 40.0, RAISED, FAINT);
-        let tx = x + 60.0;
-        let room = rw - 60.0 - 150.0;
+        let f = ui::fade(1000 + i, over);
+        let held = i == selected || i == menu_row;
+        let t: f32 = if held { 1.0 } else { f };
+        let bg = ui::mix(BG, SURFACE, t);
+        if t > 0.01 { ui::rect(x, y + 2.0, rw, ROW - 4.0, 10.0, bg); }
+        let lx = x + 22.0;
+        let cy0 = y + ROW / 2.0;
+        if current && !player::paused() && !player::idle() {
+            ui::icon(ui::I_BARS, lx, cy0, 16.0, 0, ACCENT);
+        } else if over {
+            ui::icon(ui::I_PLAY, lx, cy0, 14.0, 0, TEXT);
+        } else {
+            var num: u8[>..] = [];
+            format(num, i + 1);
+            ui::text(num, lx - ui::text_width(num, 12.0) / 2.0, cy0 - 7.0, 12.0, if current { ACCENT } else { FAINT });
+        }
+        lib::art(i, x + 44.0, y + 8.0, 40.0, RAISED, FAINT);
+        let tx = x + 98.0;
+        let room = rw - 98.0 - 150.0;
         let tn = lib::field(i, lib::TITLE, buf);
         ui::text_fit(buf[..tn], tx, y + 10.0, 15.0, if current { ACCENT } else { TEXT }, room);
         var sub: u8[>..] = [];
@@ -533,15 +544,15 @@ fn list(x0: f32, w: f32, h: f32, mx: f32, my: f32, click: bool) {
         var d: u8[>..] = [];
         let secs = lib::duration(i);
         if secs > 0.0 { fmt_time(d, secs); }
-        ui::text(d, x + rw - 16.0 - ui::text_width(d, 13.0), y + 21.0, 13.0, FAINT);
+        ui::text(d, x + rw - 16.0 - ui::text_width(d, 12.0), y + 21.0, 12.0, FAINT);
         let liked = lib::liked(i);
         let hx = x + rw - 112.0;
         let mxb = x + rw - 80.0;
         let cy = y + ROW / 2.0;
         let over_heart = over && hit(mx, my, hx - 14.0, cy - 14.0, 28.0, 28.0);
         let over_more = over && hit(mx, my, mxb - 14.0, cy - 14.0, 28.0, 28.0);
-        if over || liked { heart_button(hx, cy, liked, if over_heart { TEXT } else { MUTED }); }
-        if over || i == menu_row { plus(mxb, cy, if over_more || i == menu_row { TEXT } else { MUTED }); }
+        if liked { heart_button(hx, cy, true, LOVE); } else if t > 0.01 { heart_button(hx, cy, false, ui::mix(bg, if over_heart { TEXT } else { MUTED }, t)); }
+        if t > 0.01 { ui::icon(ui::I_PLUS, mxb, cy, 18.0, 0, ui::mix(bg, if over_more || i == menu_row { TEXT } else { MUTED }, t)); }
         if over {
             hand = true;
             if click {
@@ -608,14 +619,18 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
     let can_next = lib::has_next();
     let over_prev = can_prev && hit(mx, my, prev_x - 16.0, cy - 16.0, 32.0, 32.0);
     let over_next = can_next && hit(mx, my, next_x - 16.0, cy - 16.0, 32.0, 32.0);
-    skip(prev_x, cy, false, if over_prev { TEXT } else if can_prev { MUTED } else { RAISED });
-    skip(next_x, cy, true, if over_next { TEXT } else if can_next { MUTED } else { RAISED });
+    let fp = ui::fade(70001, over_prev);
+    let fn_ = ui::fade(70002, over_next);
+    ui::icon(ui::I_PREV, prev_x, cy, 22.0, 0, if can_prev { ui::mix(MUTED, TEXT, fp) } else { RAISED });
+    ui::icon(ui::I_NEXT, next_x, cy, 22.0, 0, if can_next { ui::mix(MUTED, TEXT, fn_) } else { RAISED });
     if over_prev || over_next { hand = true; }
     if over_prev && click { prev(); }
     if over_next && click { next(); }
 
-    ui::circle(px, cy, 22.0, if active { ACCENT } else { RAISED });
-    if active && hit(mx, my, px - 22.0, cy - 22.0, 44.0, 44.0) {
+    let over_play = active && hit(mx, my, px - 22.0, cy - 22.0, 44.0, 44.0);
+    let fpl = ui::fade(70003, over_play);
+    ui::circle(px, cy, 20.0 + fpl, if active { ui::mix(ACCENT, 0xffffffff, fpl) } else { RAISED });
+    if over_play {
         hand = true;
         if click { player::toggle(); }
     }
@@ -624,10 +639,9 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
         let turn = (ui::time() * 360.0) as f32;
         ui::ring(px, cy, 7.0, 9.5, turn, turn + 270.0, icon);
     } else if player::paused() || !active {
-        ui::triangle(px - 6.0, cy - 9.0, px - 6.0, cy + 9.0, px + 10.0, cy, icon);
+        ui::icon(ui::I_PLAY, px + 1.5, cy, 22.0, 0, icon);
     } else {
-        ui::rect(px - 7.0, cy - 8.0, 5.0, 16.0, 1.5, icon);
-        ui::rect(px + 2.0, cy - 8.0, 5.0, 16.0, 1.5, icon);
+        ui::icon(ui::I_PAUSE, px, cy, 22.0, 0, icon);
     }
 
     let vol_w = 100.0;
@@ -658,10 +672,21 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
         if drag == 1 { drag_value = clamp((mx - track_x) / track_w, 0.0, 1.0) * dur; }
     }
 
-    ui::rect(vx - 26.0, cy - 4.0, 5.0, 8.0, 1.0, MUTED);
-    ui::triangle(vx - 22.0, cy - 4.0, vx - 22.0, cy + 4.0, vx - 15.0, cy + 9.0, MUTED);
-    ui::triangle(vx - 22.0, cy - 4.0, vx - 15.0, cy + 9.0, vx - 15.0, cy - 9.0, MUTED);
-    let vf = (volume / 100.0) as f32;
+    let shown_vol = if muted { 0.0 } else { volume };
+    let level: i32 = if shown_vol <= 0.0 { -1 } else if shown_vol < 34.0 { 1 } else if shown_vol < 67.0 { 2 } else { 3 };
+    let sx = vx - 22.0;
+    let over_speaker = hit(mx, my, sx - 14.0, cy - 14.0, 28.0, 28.0);
+    let fs = ui::fade(70004, over_speaker);
+    ui::icon(ui::I_SPEAKER, sx, cy, 20.0, level, ui::mix(MUTED, TEXT, fs));
+    if over_speaker {
+        hand = true;
+        if click {
+            muted = !muted;
+            if !muted && volume <= 0.0 { volume = 50.0; }
+            player::volume(if muted { 0.0 } else { volume });
+        }
+    }
+    let vf = (shown_vol / 100.0) as f32;
     ui::rect(vx, cy - 2.0, vol_w, 4.0, 2.0, RAISED);
     ui::rect(vx, cy - 2.0, vol_w * vf, 4.0, 2.0, MUTED);
     let over_vol = hit(mx, my, vx - 6.0, cy - 12.0, vol_w + 12.0, 24.0);
@@ -672,6 +697,7 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
     if over_vol && click { drag = 2; }
     if drag == 2 {
         volume = clamp((mx - vx) / vol_w, 0.0, 1.0) as f64 * 100.0;
+        muted = false;
         player::volume(volume);
     }
     if ui::mouse_released() {
@@ -689,6 +715,7 @@ fn draw() {
     let click = ui::mouse_pressed();
     hand = false;
     typing = false;
+    ui::anim_begin();
     ui::frame(BG);
     let mw = w - SIDE;
     search_box(SIDE, mw, mx, my, click && menu_row < 0);
@@ -754,7 +781,7 @@ fn main() {
         if ui::visible() { draw(); }
         tell_system();
         let playing = !player::idle() && !player::paused();
-        ui::wait(if drag != 0 { 0.0 } else if player::loading() { 1.0 / 30.0 } else if search::state() == search::BUSY { 0.25 } else if playing && ui::visible() { 1.0 } else { -1.0 });
+        ui::wait(if drag != 0 { 0.0 } else if ui::animating() { 1.0 / 60.0 } else if player::loading() { 1.0 / 30.0 } else if search::state() == search::BUSY { 0.25 } else if playing && ui::visible() { 1.0 } else { -1.0 });
     }
     player::close();
     lib::close();

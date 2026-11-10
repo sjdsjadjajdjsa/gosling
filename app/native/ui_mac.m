@@ -10,7 +10,7 @@ static const unsigned char inter[] = {
 #embed "../fonts/Inter-Medium.ttf"
 };
 
-enum { C_RECT, C_CIRCLE, C_RING, C_TRI, C_TEXT, C_CLIP, C_UNCLIP, C_IMAGE, C_HEART };
+enum { C_RECT, C_CIRCLE, C_RING, C_TRI, C_TEXT, C_CLIP, C_UNCLIP, C_IMAGE, C_HEART, C_ICON };
 
 typedef struct {
     int kind;
@@ -120,6 +120,138 @@ static void fill(CGContextRef g, uint32_t c) {
     CGContextSetRGBFillColor(g, (c >> 24) / 255.0, ((c >> 16) & 255) / 255.0, ((c >> 8) & 255) / 255.0, (c & 255) / 255.0);
 }
 
+static void icon(CGContextRef g, float cx, float cy, float size, int kind, int level, uint32_t color) {
+    float k = size / 24;
+    CGContextSaveGState(g);
+    CGContextTranslateCTM(g, cx - 12 * k, cy - 12 * k);
+    CGContextScaleCTM(g, k, k);
+    fill(g, color);
+    CGContextSetRGBStrokeColor(g, (color >> 24) / 255.0, ((color >> 16) & 255) / 255.0, ((color >> 8) & 255) / 255.0, (color & 255) / 255.0);
+    CGContextSetLineWidth(g, 1.9);
+    CGContextSetLineCap(g, kCGLineCapRound);
+    CGContextSetLineJoin(g, kCGLineJoinRound);
+    switch (kind) {
+    case 0:
+        CGContextMoveToPoint(g, 8.5, 6);
+        CGContextAddLineToPoint(g, 18.5, 12);
+        CGContextAddLineToPoint(g, 8.5, 18);
+        CGContextClosePath(g);
+        CGContextSetLineWidth(g, 2.6);
+        CGContextDrawPath(g, kCGPathFillStroke);
+        break;
+    case 1: {
+        CGPathRef a = CGPathCreateWithRoundedRect(CGRectMake(6.5, 5.5, 4, 13), 1.4, 1.4, NULL);
+        CGPathRef b = CGPathCreateWithRoundedRect(CGRectMake(13.5, 5.5, 4, 13), 1.4, 1.4, NULL);
+        CGContextAddPath(g, a);
+        CGContextAddPath(g, b);
+        CGContextFillPath(g);
+        CGPathRelease(a);
+        CGPathRelease(b);
+        break;
+    }
+    case 2:
+    case 3: {
+        if (kind == 3) {
+            CGContextTranslateCTM(g, 24, 0);
+            CGContextScaleCTM(g, -1, 1);
+        }
+        CGPathRef bar = CGPathCreateWithRoundedRect(CGRectMake(5, 6, 2.4, 12), 1.2, 1.2, NULL);
+        CGContextAddPath(g, bar);
+        CGContextFillPath(g);
+        CGPathRelease(bar);
+        CGContextMoveToPoint(g, 18.5, 6.8);
+        CGContextAddLineToPoint(g, 10, 12);
+        CGContextAddLineToPoint(g, 18.5, 17.2);
+        CGContextClosePath(g);
+        CGContextSetLineWidth(g, 2.4);
+        CGContextDrawPath(g, kCGPathFillStroke);
+        break;
+    }
+    case 4:
+        CGContextStrokeEllipseInRect(g, CGRectMake(4.5, 4.5, 12, 12));
+        CGContextMoveToPoint(g, 15.2, 15.2);
+        CGContextAddLineToPoint(g, 19.5, 19.5);
+        CGContextStrokePath(g);
+        break;
+    case 5:
+        CGContextMoveToPoint(g, 12, 5.5);
+        CGContextAddLineToPoint(g, 12, 18.5);
+        CGContextMoveToPoint(g, 5.5, 12);
+        CGContextAddLineToPoint(g, 18.5, 12);
+        CGContextStrokePath(g);
+        break;
+    case 6:
+        CGContextMoveToPoint(g, 3.5, 9.5);
+        CGContextAddLineToPoint(g, 7, 9.5);
+        CGContextAddLineToPoint(g, 11.5, 5.5);
+        CGContextAddLineToPoint(g, 11.5, 18.5);
+        CGContextAddLineToPoint(g, 7, 14.5);
+        CGContextAddLineToPoint(g, 3.5, 14.5);
+        CGContextClosePath(g);
+        CGContextSetLineWidth(g, 1.4);
+        CGContextDrawPath(g, kCGPathFillStroke);
+        CGContextSetLineWidth(g, 1.9);
+        if (level < 0) {
+            CGContextMoveToPoint(g, 15.5, 9.5);
+            CGContextAddLineToPoint(g, 20.5, 14.5);
+            CGContextMoveToPoint(g, 20.5, 9.5);
+            CGContextAddLineToPoint(g, 15.5, 14.5);
+            CGContextStrokePath(g);
+        }
+        for (int i = 0; i < level && i < 3; i++) {
+            float r = 3.8f + i * 3.4f;
+            CGContextAddArc(g, 11.5, 12, r, -0.75, 0.75, 0);
+            CGContextStrokePath(g);
+        }
+        break;
+    case 8:
+        CGContextStrokeEllipseInRect(g, CGRectMake(3.5, 3.5, 17, 17));
+        CGContextMoveToPoint(g, 12, 7.5);
+        CGContextAddLineToPoint(g, 12, 12);
+        CGContextAddLineToPoint(g, 15, 14);
+        CGContextStrokePath(g);
+        break;
+    case 9:
+        CGContextMoveToPoint(g, 3.5, 17.5);
+        CGContextAddLineToPoint(g, 3.5, 6.5);
+        CGContextAddLineToPoint(g, 9, 6.5);
+        CGContextAddLineToPoint(g, 11, 8.5);
+        CGContextAddLineToPoint(g, 20.5, 8.5);
+        CGContextAddLineToPoint(g, 20.5, 17.5);
+        CGContextClosePath(g);
+        CGContextStrokePath(g);
+        break;
+    case 10:
+        for (int i = 0; i < 3; i++) {
+            float y = 7 + i * 5;
+            CGContextMoveToPoint(g, 9, y);
+            CGContextAddLineToPoint(g, 20, y);
+            CGContextStrokePath(g);
+            CGContextFillEllipseInRect(g, CGRectMake(3.6, y - 1.3, 2.6, 2.6));
+        }
+        break;
+    case 11:
+        CGContextStrokeEllipseInRect(g, CGRectMake(8, 5, 13, 13));
+        CGContextMoveToPoint(g, 8.2, 10.2);
+        CGContextAddLineToPoint(g, 2.5, 12);
+        CGContextAddLineToPoint(g, 8.4, 13.8);
+        CGContextStrokePath(g);
+        CGContextFillEllipseInRect(g, CGRectMake(11.4, 8.4, 2.4, 2.4));
+        break;
+    case 12: {
+        float hs[3] = { 8, 13, 10 };
+        for (int i = 0; i < 3; i++) {
+            CGPathRef p = CGPathCreateWithRoundedRect(CGRectMake(5.5 + i * 5, 18.5 - hs[i], 3, hs[i]), 1.2, 1.2, NULL);
+            CGContextAddPath(g, p);
+            CGContextFillPath(g);
+            CGPathRelease(p);
+        }
+        break;
+    }
+    }
+    CGContextRestoreGState(g);
+}
+
 static void replay(CGContextRef g) {
     for (size_t i = 0; i < shown.len; i++) {
         cmd *c = &shown.items[i];
@@ -201,6 +333,9 @@ static void replay(CGContextRef g) {
             CGPathRelease(p);
             break;
         }
+        case C_ICON:
+            icon(g, a[0], a[1], a[2], (int)a[3], (int)a[4], c->color);
+            break;
         case C_IMAGE: {
             CGContextSaveGState(g);
             CGRect r = CGRectMake(a[0], a[1], a[2], a[2]);
@@ -260,7 +395,15 @@ static int map_key(unsigned short code) {
     else [NSCursor.arrowCursor set];
 }
 - (void)mouseDragged:(NSEvent *)e { [self track:e]; }
-- (void)mouseDown:(NSEvent *)e { [self track:e]; down = clicked = true; }
+- (void)mouseDown:(NSEvent *)e {
+    [self track:e];
+    if (my < 52 && cursor != 2 && cursor != 4) {
+        if (e.clickCount == 2) [window performZoom:nil];
+        else [window performWindowDragWithEvent:e];
+        return;
+    }
+    down = clicked = true;
+}
 - (void)mouseUp:(NSEvent *)e { [self track:e]; down = false; unclicked = true; }
 - (void)scrollWheel:(NSEvent *)e { wheel_acc += (float)(e.hasPreciseScrollingDeltas ? e.scrollingDeltaY / 56.0 : e.scrollingDeltaY); }
 - (void)keyDown:(NSEvent *)e {
@@ -311,11 +454,13 @@ void ui_open(gs_str title, int32_t w, int32_t h, int32_t min_w, int32_t min_h) {
     item.submenu = menu;
     NSApp.mainMenu = bar;
     window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, w, h)
-                                         styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
+                                         styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable | NSWindowStyleMaskFullSizeContentView
                                            backing:NSBackingStoreBuffered
                                              defer:NO];
     window.title = [NSString stringWithUTF8String:gs_cstr(title, t, sizeof t)];
     window.contentMinSize = NSMakeSize(min_w, min_h);
+    window.titlebarAppearsTransparent = YES;
+    window.titleVisibility = NSWindowTitleHidden;
     window.releasedWhenClosed = NO;
     window.acceptsMouseMovedEvents = YES;
     window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
@@ -557,3 +702,9 @@ void ui_heart(float cx, float cy, float size, bool filled, uint32_t color) {
     cmd *c = push(C_HEART, color);
     if (c) memcpy(c->a, (float[]){ cx, cy, size, filled ? 1.0f : 0.0f }, 4 * sizeof(float));
 }
+
+void ui_icon(int32_t kind, float cx, float cy, float size, int32_t level, uint32_t color) {
+    cmd *c = push(C_ICON, color);
+    if (c) memcpy(c->a, (float[]){ cx, cy, size, (float)kind, (float)level }, 5 * sizeof(float));
+}
+

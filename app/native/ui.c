@@ -250,3 +250,70 @@ void ui_heart(float cx, float cy, float size, bool filled, uint32_t color) {
         for (int i = 0; i < n; i++) DrawLineEx(pts[i], pts[(i + 1) % n], 1.6f, c);
     }
 }
+
+static Vector2 gp(float cx, float cy, float k, float x, float y) { return (Vector2){ cx + (x - 12) * k, cy + (y - 12) * k }; }
+
+void ui_icon(int32_t kind, float cx, float cy, float size, int32_t level, uint32_t color) {
+    Color c = { (unsigned char)(color >> 24), (unsigned char)(color >> 16), (unsigned char)(color >> 8), (unsigned char)color };
+    float k = size / 24, w = 1.9f * k;
+#define P(x, y) gp(cx, cy, k, x, y)
+#define L(x1, y1, x2, y2) DrawLineEx(P(x1, y1), P(x2, y2), w, c)
+    switch (kind) {
+    case 0: DrawTriangle(P(8.5f, 6), P(8.5f, 18), P(18.5f, 12), c); break;
+    case 1:
+        DrawRectangleRounded((Rectangle){ cx - 5.5f * k, cy - 6.5f * k, 4 * k, 13 * k }, 0.4f, 4, c);
+        DrawRectangleRounded((Rectangle){ cx + 1.5f * k, cy - 6.5f * k, 4 * k, 13 * k }, 0.4f, 4, c);
+        break;
+    case 2:
+        DrawRectangleRounded((Rectangle){ cx - 7 * k, cy - 6 * k, 2.4f * k, 12 * k }, 0.5f, 4, c);
+        DrawTriangle(P(18.5f, 6.8f), P(10, 12), P(18.5f, 17.2f), c);
+        break;
+    case 3:
+        DrawRectangleRounded((Rectangle){ cx + 4.6f * k, cy - 6 * k, 2.4f * k, 12 * k }, 0.5f, 4, c);
+        DrawTriangle(P(5.5f, 6.8f), P(5.5f, 17.2f), P(14, 12), c);
+        break;
+    case 4:
+        DrawRing(P(10.5f, 10.5f), 6 * k - w / 2, 6 * k + w / 2, 0, 360, 32, c);
+        L(15.2f, 15.2f, 19.5f, 19.5f);
+        break;
+    case 5: L(12, 5.5f, 12, 18.5f); L(5.5f, 12, 18.5f, 12); break;
+    case 6:
+        DrawRectangleV(P(3.5f, 9.5f), (Vector2){ 4 * k, 5 * k }, c);
+        DrawTriangle(P(7, 9.5f), P(7, 14.5f), P(11.5f, 18.5f), c);
+        DrawTriangle(P(7, 9.5f), P(11.5f, 18.5f), P(11.5f, 5.5f), c);
+        if (level < 0) { L(15.5f, 9.5f, 20.5f, 14.5f); L(20.5f, 9.5f, 15.5f, 14.5f); }
+        for (int i = 0; i < level && i < 3; i++) {
+            float r = (3.8f + i * 3.4f) * k;
+            DrawRing(P(11.5f, 12), r - w / 2, r + w / 2, -43, 43, 12, c);
+        }
+        break;
+    case 8:
+        DrawRing(P(12, 12), 8.5f * k - w / 2, 8.5f * k + w / 2, 0, 360, 36, c);
+        L(12, 7.5f, 12, 12);
+        L(12, 12, 15, 14);
+        break;
+    case 9:
+        L(3.5f, 17.5f, 3.5f, 6.5f); L(3.5f, 6.5f, 9, 6.5f); L(9, 6.5f, 11, 8.5f);
+        L(11, 8.5f, 20.5f, 8.5f); L(20.5f, 8.5f, 20.5f, 17.5f); L(20.5f, 17.5f, 3.5f, 17.5f);
+        break;
+    case 10:
+        for (int i = 0; i < 3; i++) {
+            float y = 7.0f + i * 5;
+            L(9, y, 20, y);
+            DrawCircleV(P(4.9f, y), 1.3f * k, c);
+        }
+        break;
+    case 11:
+        DrawRing(P(14.5f, 11.5f), 6.5f * k - w / 2, 6.5f * k + w / 2, 0, 360, 32, c);
+        L(8.2f, 10.2f, 2.5f, 12); L(2.5f, 12, 8.4f, 13.8f);
+        DrawCircleV(P(12.6f, 9.6f), 1.2f * k, c);
+        break;
+    case 12: {
+        float hs[3] = { 8, 13, 10 };
+        for (int i = 0; i < 3; i++) DrawRectangleRounded((Rectangle){ cx + (5.5f + i * 5 - 12) * k, cy + (18.5f - hs[i] - 12) * k, 3 * k, hs[i] * k }, 0.4f, 4, c);
+        break;
+    }
+    }
+#undef L
+#undef P
+}
