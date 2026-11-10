@@ -33,8 +33,10 @@ jobs:
         id: goose
         uses: actions/cache@v4
         with:
-          path: ~/goose/build/goose
-          key: goose-${{ runner.os }}-${{ hashFiles('.github/goose-rev') }}
+          path: |
+            ~/goose/build/goose
+            ~/goose/stdlib
+          key: goose-stdlib-${{ runner.os }}-${{ hashFiles('.github/goose-rev') }}
       - name: Build Goose
         if: steps.goose.outputs.cache-hit != 'true'
         run: |
