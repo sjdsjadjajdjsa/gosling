@@ -45,7 +45,7 @@ jobs:
           CC=clang-19 CXX=clang++-19 cmake -S ~/goose -B ~/goose/build -DCMAKE_BUILD_TYPE=Release
           cmake --build ~/goose/build -j --target goose
       - name: Build Gosling
-        run: CC=clang-19 ./build.sh
+        run: CC=clang-19 GOSLING_DISCORD_APP=1569570203829010555 ./build.sh
       - name: Package
         run: |
           mkdir -p dist/gosling

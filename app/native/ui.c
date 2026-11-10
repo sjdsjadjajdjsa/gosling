@@ -1,3 +1,4 @@
+#include <math.h>
 #include <raylib.h>
 #include <stdlib.h>
 #include <GLFW/glfw3.h>
@@ -229,4 +230,23 @@ void ui_image_free(void *image) {
     if (p->uploaded) UnloadTexture(p->texture);
     else UnloadImage(p->image);
     free(p);
+}
+
+void ui_heart(float cx, float cy, float size, bool filled, uint32_t color) {
+    Color c = { (unsigned char)(color >> 24), (unsigned char)(color >> 16), (unsigned char)(color >> 8), (unsigned char)color };
+    float s = size, x = cx - s / 2, y = cy - s * 0.45f;
+    Vector2 pts[64];
+    int n = 0;
+    for (int i = 0; i < 64; i++) {
+        float t = (float)i / 64 * 2 * PI;
+        float hx = 16 * powf(sinf(t), 3);
+        float hy = 13 * cosf(t) - 5 * cosf(2 * t) - 2 * cosf(3 * t) - cosf(4 * t);
+        pts[n++] = (Vector2){ x + s / 2 + hx / 34 * s, y + s * 0.42f - hy / 34 * s };
+    }
+    if (filled) {
+        Vector2 mid = { cx, y + s * 0.45f };
+        for (int i = 0; i < n; i++) DrawTriangle(mid, pts[(i + 1) % n], pts[i], c);
+    } else {
+        for (int i = 0; i < n; i++) DrawLineEx(pts[i], pts[(i + 1) % n], 1.6f, c);
+    }
 }

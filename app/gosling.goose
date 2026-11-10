@@ -233,20 +233,8 @@ fn fmt_time(out: u8[>..]&, secs: f64) {
     format(out, s % 60);
 }
 
-fn heart(cx: f32, cy: f32, s: f32, color: u32) {
-    let r = s * 0.27;
-    ui::circle(cx - r * 0.95, cy - r * 0.35, r, color);
-    ui::circle(cx + r * 0.95, cy - r * 0.35, r, color);
-    ui::triangle(cx - r * 1.9, cy - r * 0.1, cx, cy + s * 0.48, cx + r * 1.9, cy - r * 0.1, color);
-}
-
-fn heart_button(cx: f32, cy: f32, on: bool, bg: u32, color: u32) {
-    if on {
-        heart(cx, cy, 16.0, LOVE);
-    } else {
-        heart(cx, cy, 16.0, color);
-        heart(cx, cy + 0.6, 11.0, bg);
-    }
+fn heart_button(cx: f32, cy: f32, on: bool, color: u32) {
+    ui::heart(cx, cy, 16.0, on, if on { LOVE } else { color });
 }
 
 fn plus(cx: f32, cy: f32, color: u32) {
@@ -552,7 +540,7 @@ fn list(x0: f32, w: f32, h: f32, mx: f32, my: f32, click: bool) {
         let cy = y + ROW / 2.0;
         let over_heart = over && hit(mx, my, hx - 14.0, cy - 14.0, 28.0, 28.0);
         let over_more = over && hit(mx, my, mxb - 14.0, cy - 14.0, 28.0, 28.0);
-        if over || liked { heart_button(hx, cy, liked, bg, if over_heart { TEXT } else { MUTED }); }
+        if over || liked { heart_button(hx, cy, liked, if over_heart { TEXT } else { MUTED }); }
         if over || i == menu_row { plus(mxb, cy, if over_more || i == menu_row { TEXT } else { MUTED }); }
         if over {
             hand = true;
@@ -606,7 +594,7 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
     let can_like = has && ctn > 0;
     if can_like {
         let over_heart = hit(mx, my, hx - 14.0, cy - 14.0, 28.0, 28.0);
-        heart_button(hx, cy, lib::current_liked(), BAR, if over_heart { TEXT } else { MUTED });
+        heart_button(hx, cy, lib::current_liked(), if over_heart { TEXT } else { MUTED });
         if over_heart {
             hand = true;
             if click { lib::current_like(); }

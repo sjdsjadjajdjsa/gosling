@@ -10,7 +10,7 @@ static const unsigned char inter[] = {
 #embed "../fonts/Inter-Medium.ttf"
 };
 
-enum { C_RECT, C_CIRCLE, C_RING, C_TRI, C_TEXT, C_CLIP, C_UNCLIP, C_IMAGE };
+enum { C_RECT, C_CIRCLE, C_RING, C_TRI, C_TEXT, C_CLIP, C_UNCLIP, C_IMAGE, C_HEART };
 
 typedef struct {
     int kind;
@@ -174,6 +174,33 @@ static void replay(CGContextRef g) {
         case C_UNCLIP:
             CGContextRestoreGState(g);
             break;
+        case C_HEART: {
+            float s = a[2], x = a[0] - s / 2, y = a[1] - s * 0.45f;
+            CGMutablePathRef p = CGPathCreateMutable();
+#define P(px, py) x + (px) * s, y + (py) * s
+            CGPathMoveToPoint(p, NULL, P(0.5f, 0.92f));
+            CGPathAddCurveToPoint(p, NULL, P(0.16f, 0.66f), P(0.0f, 0.46f), P(0.0f, 0.29f));
+            CGPathAddCurveToPoint(p, NULL, P(0.0f, 0.12f), P(0.13f, 0.0f), P(0.28f, 0.0f));
+            CGPathAddCurveToPoint(p, NULL, P(0.38f, 0.0f), P(0.46f, 0.06f), P(0.5f, 0.16f));
+            CGPathAddCurveToPoint(p, NULL, P(0.54f, 0.06f), P(0.62f, 0.0f), P(0.72f, 0.0f));
+            CGPathAddCurveToPoint(p, NULL, P(0.87f, 0.0f), P(1.0f, 0.12f), P(1.0f, 0.29f));
+            CGPathAddCurveToPoint(p, NULL, P(1.0f, 0.46f), P(0.84f, 0.66f), P(0.5f, 0.92f));
+#undef P
+            CGPathCloseSubpath(p);
+            CGContextAddPath(g, p);
+            uint32_t c2 = c->color;
+            if (a[3] > 0) {
+                fill(g, c2);
+                CGContextFillPath(g);
+            } else {
+                CGContextSetRGBStrokeColor(g, (c2 >> 24) / 255.0, ((c2 >> 16) & 255) / 255.0, ((c2 >> 8) & 255) / 255.0, (c2 & 255) / 255.0);
+                CGContextSetLineWidth(g, 1.6);
+                CGContextSetLineJoin(g, kCGLineJoinRound);
+                CGContextStrokePath(g);
+            }
+            CGPathRelease(p);
+            break;
+        }
         case C_IMAGE: {
             CGContextSaveGState(g);
             CGRect r = CGRectMake(a[0], a[1], a[2], a[2]);
@@ -524,4 +551,9 @@ void ui_close(void) {
     for (int i = 0; i < nfonts; i++) CFRelease(fonts[i].font);
     nfonts = 0;
     [window close];
+}
+
+void ui_heart(float cx, float cy, float size, bool filled, uint32_t color) {
+    cmd *c = push(C_HEART, color);
+    if (c) memcpy(c->a, (float[]){ cx, cy, size, filled ? 1.0f : 0.0f }, 4 * sizeof(float));
 }
