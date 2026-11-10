@@ -7,8 +7,15 @@ Memory is macOS `phys_footprint` 12 seconds after launch. CPU is the CPU time us
 | --- | --- | --- | --- | --- |
 | Gosling, idle | 68 MB | 0.00 s | 9 | 1.0 MB |
 | Gosling, playing a local file | 101 MB | 0.18 s | 15 | |
-| Gosling, streaming from YouTube Music | 128 MB | 0.40 s | 15 | |
 | Tonal 0.11, idle | 72 MB | 0.79 s | 14 | 16 MB |
 
-Idle memory is about the same. The difference is CPU: Gosling draws nothing when nothing changes, so it uses no CPU while idle.
-Tonal playing is not measured here yet: the released Tonal app has no way to start a song from a script (that needs a build with the `debug-hooks` feature), so it needs a song started by hand. Linux numbers use Tonal's `bench.py` on cedar and are still to come.
+## Playing
+
+Both apps search "lofi chill" on YouTube Music and play the first song, with audio sent to mpv's null output. Two runs each, same Mac, same minute. Tonal runs mpv as a second process, so its numbers are Tonal plus its mpv. Tonal was a release build with the `debug-hooks` feature, which only adds the start-a-search-from-the-command-line hook.
+
+| | Memory | CPU in 20 s |
+| --- | --- | --- |
+| Gosling | 129 to 130 MB | 0.26 to 0.38 s |
+| Tonal 0.11.5 (55 MB) + its mpv (226 to 229 MB) | 280 to 284 MB | 0.92 to 1.27 s |
+
+Playing, Gosling uses about half the memory and about a third of the CPU. Idle memory is about the same; idle CPU is zero for Gosling because it draws nothing when nothing changes. Linux numbers use Tonal's `bench.py` on cedar and are still to come.
