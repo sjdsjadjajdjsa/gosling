@@ -20,7 +20,7 @@ Darwin)
     PKGS="mpv yyjson libcurl sqlite3 libavformat libavutil"
     ;;
 *)
-    GLFW_LANG=""
+    GLFW_LANG="-D_GLFW_X11"
     PLATFORM="app/native/platform_linux.c"
     SYS_LIBS="-lGL -lX11 -lm -ldl -lpthread"
     PKGS="mpv yyjson libcurl sqlite3 libavformat libavutil libsystemd"
