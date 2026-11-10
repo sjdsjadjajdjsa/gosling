@@ -125,6 +125,10 @@ bool player_open(void) {
         option("script-opts", opts);
     }
     option("gapless-audio", "weak");
+    option("cache", "yes");
+    option("demuxer-max-bytes", "16MiB");
+    option("demuxer-max-back-bytes", "8MiB");
+    option("prefetch-playlist", "no");
     option("osc", "no");
     option("input-default-bindings", "no");
     option("load-stats-overlay", "no");
