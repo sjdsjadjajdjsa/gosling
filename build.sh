@@ -46,7 +46,7 @@ fi
 
 $CC $OPT -std=c23 -D_GNU_SOURCE -DGOSLING_DISCORD_APP="\"${GOSLING_DISCORD_APP:-1569570203829010555}\"" -w \
     "$OUT/gosling.c" "$OUT/goose_runtime.c" \
-    app/native/player.c app/native/search.c app/native/lib.c app/native/art.c app/native/scan.c app/native/discord.c app/native/anim.c \
+    app/native/player.c app/native/search.c app/native/lib.c app/native/art.c app/native/scan.c app/native/discord.c app/native/anim.c app/native/ytdlp.c \
     -I"$RL" -I"$RL/external/glfw/include" -Iapp/native $(pkg-config --cflags $PKGS) \
     $PLATFORM $UI \
     $(pkg-config --libs $PKGS) $SYS_LIBS -lm -pthread \

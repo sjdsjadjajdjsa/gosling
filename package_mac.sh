@@ -8,18 +8,24 @@ APP=build/Gosling.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Frameworks"
 cp build/gosling "$APP/Contents/MacOS/gosling"
-YTDLP=$(command -v yt-dlp || true)
-[ -n "$YTDLP" ] && cp "$YTDLP" "$APP/Contents/MacOS/yt-dlp"
-VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
+mkdir -p "$APP/Contents/Resources"
+cp packaging/Gosling.icns "$APP/Contents/Resources/Gosling.icns"
+VERSION=${VERSION:-$(git describe --tags --always 2>/dev/null || echo dev)}
+VERSION=${VERSION#v}
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleName</key><string>Gosling</string>
+<key>CFBundleDisplayName</key><string>Gosling</string>
+<key>CFBundleIconFile</key><string>Gosling</string>
+<key>CFBundleVersion</key><string>${VERSION}</string>
+<key>LSApplicationCategoryType</key><string>public.app-category.music</string>
+<key>NSHumanReadableCopyright</key><string>FSL-1.1-MIT</string>
 <key>CFBundleIdentifier</key><string>com.goslingplayer.gosling</string>
 <key>CFBundleExecutable</key><string>gosling</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>${VERSION#v}</string>
+<key>CFBundleShortVersionString</key><string>${VERSION}</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
@@ -31,5 +37,7 @@ for f in "$APP/Contents/MacOS/gosling" "$APP"/Contents/Frameworks/*.dylib; do
     done
 done
 codesign --force --deep --sign - "$APP"
-ditto -c -k --keepParent "$APP" build/gosling-macos-arm64.zip
-du -sh "$APP" build/gosling-macos-arm64.zip
+[ -x build/dmgenv/bin/dmgbuild ] || { python3 -m venv build/dmgenv && build/dmgenv/bin/pip install -q dmgbuild; }
+rm -f build/gosling-macos-arm64.dmg
+build/dmgenv/bin/dmgbuild -s packaging/dmg.py -D app="$APP" "Gosling" build/gosling-macos-arm64.dmg >/dev/null
+du -sh "$APP" build/gosling-macos-arm64.dmg

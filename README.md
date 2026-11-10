@@ -46,7 +46,7 @@ git clone --recursive https://github.com/sjdsjadjajdjsa/gosling && cd gosling
 ./build.sh && ./build/gosling
 ```
 
-`./package_mac.sh` makes `build/Gosling.app` with its libraries inside (needs `brew install dylibbundler`). Linux builds and releases run on GitHub Actions.
+`./package_mac.sh` makes `build/Gosling.app` with its libraries inside and `build/gosling-macos-arm64.dmg` (needs `brew install dylibbundler`). yt-dlp isn't bundled: Gosling uses one on your PATH, or downloads yt-dlp's standalone build on the first YouTube song and keeps it updated. Linux builds and releases run on GitHub Actions.
 
 `./build/gosling <file or link>` starts playing it. `GOSLING_MPV_OPTIONS=ao=null` passes extra mpv options (comma separated), for tests and benchmarks.
 

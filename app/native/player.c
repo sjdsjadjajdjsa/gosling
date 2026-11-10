@@ -4,14 +4,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
 #include "native.h"
 
 static mpv_handle *mpv;
 static char last_url[2048];
-static bool retried, cookies;
+static bool retried, cookies, waiting;
 static struct {
     bool paused, idle, loading, failed, ended;
     double duration;
@@ -30,31 +27,6 @@ static void option(const char *name, const char *value) { mpv_set_option_string(
 static bool exists(const char *path) {
     struct stat st;
     return stat(path, &st) == 0;
-}
-
-static bool find_ytdlp(char *out, size_t cap) {
-    char exe[1024] = { 0 };
-#ifdef __APPLE__
-    uint32_t n = sizeof exe;
-    if (_NSGetExecutablePath(exe, &n) != 0) exe[0] = 0;
-#else
-    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
-    exe[n > 0 ? n : 0] = 0;
-#endif
-    char *slash = strrchr(exe, '/');
-    if (slash) {
-        *slash = 0;
-        snprintf(out, cap, "%s/yt-dlp", exe);
-        if (exists(out)) return true;
-    }
-    const char *path = getenv("PATH");
-    char dirs[4096];
-    snprintf(dirs, sizeof dirs, "%s:/opt/homebrew/bin:/usr/local/bin:%s/.local/bin", path ? path : "", getenv("HOME") ? getenv("HOME") : "");
-    for (char *save, *d = strtok_r(dirs, ":", &save); d; d = strtok_r(NULL, ":", &save)) {
-        snprintf(out, cap, "%s/yt-dlp", d);
-        if (exists(out)) return true;
-    }
-    return false;
 }
 
 static bool firefox_has_cookies(const char *profiles) {
@@ -139,11 +111,9 @@ static bool start(void) {
     option("idle", "yes");
     option("ytdl", "yes");
     option("ytdl-format", "bestaudio/best");
-    char ytdlp[1100], opts[1200];
-    if (find_ytdlp(ytdlp, sizeof ytdlp)) {
-        snprintf(opts, sizeof opts, "ytdl_hook-ytdl_path=%s", ytdlp);
-        option("script-opts", opts);
-    }
+    char opts[1200];
+    snprintf(opts, sizeof opts, "ytdl_hook-ytdl_path=%s", ytdlp_path());
+    option("script-opts", opts);
     option("gapless-audio", "weak");
     option("cache", "yes");
     option("demuxer-max-bytes", "4MiB");
@@ -186,7 +156,19 @@ static bool start(void) {
 
 bool player_open(void) {
     st.idle = true;
+    ytdlp_init();
     return true;
+}
+
+static bool remote(const char *url) { return !strncmp(url, "http://", 7) || !strncmp(url, "https://", 8); }
+
+static void go(void) {
+    if (!start()) {
+        st.loading = false;
+        st.failed = true;
+        return;
+    }
+    load(last_url);
 }
 
 static void changed(mpv_event_property *p, uint64_t id) {
@@ -204,6 +186,17 @@ static void changed(mpv_event_property *p, uint64_t id) {
 }
 
 void player_update(void) {
+    if (waiting) {
+        int s = ytdlp_state();
+        if (s == 2) {
+            waiting = false;
+            go();
+        } else if (s == 3) {
+            waiting = false;
+            st.loading = false;
+            st.failed = true;
+        }
+    }
     if (!mpv) return;
     for (;;) {
         mpv_event *e = mpv_wait_event(mpv, 0);
@@ -227,11 +220,15 @@ void player_update(void) {
 void player_load(gs_str url) {
     gs_cstr(url, last_url, sizeof last_url);
     retried = false;
-    if (!start()) {
-        st.failed = true;
+    st.failed = false;
+    st.ended = false;
+    if (remote(last_url) && ytdlp_ensure() != 2) {
+        waiting = true;
+        st.loading = true;
         return;
     }
-    load(last_url);
+    waiting = false;
+    go();
 }
 
 void player_pause(bool pause) {
