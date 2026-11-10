@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <stdlib.h>
 #include <GLFW/glfw3.h>
 #include "native.h"
 
@@ -69,6 +70,8 @@ void ui_open(gs_str title, int32_t w, int32_t h, int32_t min_w, int32_t min_h) {
     SetExitKey(KEY_NULL);
     raylib_mouse = glfwSetMouseButtonCallback(glfwGetCurrentContext(), on_mouse);
     dpi = GetWindowScaleDPI().x;
+    const char *minimize = getenv("GOSLING_MINIMIZE");
+    if (minimize && *minimize) MinimizeWindow();
 }
 
 bool ui_running(void) { return !WindowShouldClose(); }
