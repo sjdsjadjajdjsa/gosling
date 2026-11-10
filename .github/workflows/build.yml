@@ -19,9 +19,16 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-19 cmake pkg-config libmpv-dev libyyjson-dev libcurl4-openssl-dev \
+          sudo apt-get install -y clang-19 cmake pkg-config libmpv-dev libcurl4-openssl-dev \
             libsqlite3-dev libavformat-dev libavutil-dev libsystemd-dev libgl-dev libx11-dev libxrandr-dev \
             libxinerama-dev libxcursor-dev libxi-dev
+      - name: Build yyjson
+        run: |
+          git clone --depth 1 --branch 0.13.0 https://github.com/ibireme/yyjson /tmp/yyjson
+          cmake -S /tmp/yyjson -B /tmp/yyjson/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          sudo cmake --build /tmp/yyjson/build --target install -j
+          sudo mkdir -p /usr/local/lib/pkgconfig
+          printf 'prefix=/usr/local\nName: yyjson\nDescription: yyjson\nVersion: 0.13.0\nLibs: -L${prefix}/lib -lyyjson\nCflags: -I${prefix}/include\n' | sudo tee /usr/local/lib/pkgconfig/yyjson.pc
       - name: Cache Goose
         id: goose
         uses: actions/cache@v4
