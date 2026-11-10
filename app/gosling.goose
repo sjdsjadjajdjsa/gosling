@@ -5,11 +5,10 @@ import search;
 import lib;
 import os;
 
-let BG: u32 = 0x141416ff;
-let BAR: u32 = 0x0f0f11ff;
-let SURFACE: u32 = 0x1d1d20ff;
-let RAISED: u32 = 0x2a2a2eff;
-let BORDER: u32 = 0x232326ff;
+let BG: u32 = 0x121214ff;
+let BAR: u32 = 0x121214ff;
+let SURFACE: u32 = 0x1c1c1fff;
+let RAISED: u32 = 0x29292dff;
 let TEXT: u32 = 0xf3f3f5ff;
 let MUTED: u32 = 0xa2a2a8ff;
 let FAINT: u32 = 0x6e6e74ff;
@@ -20,12 +19,12 @@ let SHADE: u32 = 0x00000066;
 
 let PAD: f32 = 24.0;
 let ROW: f32 = 56.0;
-let BAR_H: f32 = 84.0;
-let SIDE: f32 = 208.0;
-let TOP: f32 = 84.0;
-let HEAD: f32 = 60.0;
-let MENU_W: f32 = 220.0;
-let ITEM: f32 = 34.0;
+let BAR_H: f32 = 80.0;
+let SIDE: f32 = 200.0;
+let TOP: f32 = 80.0;
+let HEAD: f32 = 64.0;
+let MENU_W: f32 = 216.0;
+let ITEM: f32 = 32.0;
 
 var query: u8[..512];
 var name: u8[..512];
@@ -283,26 +282,26 @@ fn message(text: const u8[:], x: f32, w: f32, h: f32) {
 fn search_box(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
     let x = x0 + PAD;
     let y = 20.0;
-    let bw = w - PAD * 2.0;
-    let bh = 44.0;
+    let bw = min(w - PAD * 2.0, 560.0);
+    let bh = 40.0;
     if hit(mx, my, x, y, bw, bh) {
         typing = true;
         if click && renaming != 0 { finish_rename(); }
     }
-    ui::rect(x, y, bw, bh, 12.0, SURFACE);
-    ui::circle(x + 24.0, y + 21.0, 6.5, FAINT);
-    ui::circle(x + 24.0, y + 21.0, 4.5, SURFACE);
-    ui::triangle(x + 27.5, y + 25.0, x + 30.0, y + 29.5, x + 31.5, y + 27.5, FAINT);
+    ui::rect(x, y, bw, bh, 20.0, SURFACE);
+    ui::circle(x + 22.0, y + 19.0, 6.5, FAINT);
+    ui::circle(x + 22.0, y + 19.0, 4.5, SURFACE);
+    ui::triangle(x + 25.5, y + 23.0, x + 28.0, y + 27.5, x + 29.5, y + 25.5, FAINT);
     let tx = x + 44.0;
     let room = bw - 60.0;
     let caret = renaming == 0;
     if query.len == 0 {
-        ui::text("Search songs, or paste a link", tx, y + 13.0, 15.0, FAINT);
-        if caret { ui::rect(tx - 1.0, y + 12.0, 2.0, 20.0, 1.0, MUTED); }
+        ui::text("Search songs, or paste a link", tx, y + 11.0, 15.0, FAINT);
+        if caret { ui::rect(tx - 1.0, y + 10.0, 2.0, 20.0, 1.0, MUTED); }
     } else {
-        ui::text_fit(query, tx, y + 13.0, 15.0, TEXT, room);
+        ui::text_fit(query, tx, y + 11.0, 15.0, TEXT, room);
         let cw = min(ui::text_width(query, 15.0), room);
-        if caret { ui::rect(tx + cw + 1.0, y + 12.0, 2.0, 20.0, 1.0, MUTED); }
+        if caret { ui::rect(tx + cw + 1.0, y + 10.0, 2.0, 20.0, 1.0, MUTED); }
     }
 }
 
@@ -311,15 +310,14 @@ fn nav(label: const u8[:], y: f32, on: bool, mx: f32, my: f32, click: bool) -> b
     let w = SIDE - 24.0;
     let over = hit(mx, my, x, y, w, ITEM);
     if on || over { ui::rect(x, y, w, ITEM, 8.0, if on { SURFACE } else { BG }); }
-    ui::text_fit(label, x + 12.0, y + 9.0, 14.0, if on { TEXT } else { MUTED }, w - 24.0);
+    ui::text_fit(label, x + 12.0, y + 8.0, 13.0, if on { TEXT } else { MUTED }, w - 24.0);
     if over { hand = true; }
     over && click
 }
 
 fn sidebar(h: f32, mx: f32, my: f32, click: bool) {
     ui::rect(0.0, 0.0, SIDE, h - BAR_H, 0.0, BAR);
-    ui::rect(SIDE - 1.0, 0.0, 1.0, h - BAR_H, 0.0, BORDER);
-    ui::text("gosling", 24.0, 28.0, 20.0, TEXT);
+    ui::text("gosling", 24.0, 28.0, 20.0, MUTED);
     let v = lib::view();
     var y: f32 = TOP;
     if nav("Search", y, v == lib::SEARCH, mx, my, click) { show(lib::SEARCH, 0); }
@@ -332,7 +330,7 @@ fn sidebar(h: f32, mx: f32, my: f32, click: bool) {
     y += ITEM + 2.0;
     if nav("Up next", y, v == lib::QUEUE, mx, my, click) { show(lib::QUEUE, 0); }
     y += ITEM + 22.0;
-    ui::text("PLAYLISTS", 24.0, y, 11.0, FAINT);
+    ui::text("Playlists", 24.0, y, 12.0, FAINT);
     let px = SIDE - 36.0;
     let over_new = hit(mx, my, px - 4.0, y - 8.0, 28.0, 28.0);
     plus(px + 10.0, y + 6.0, if over_new { TEXT } else { FAINT });
@@ -374,13 +372,13 @@ fn header(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
     }
     let editing = v == lib::PLAYLIST && renaming == lib::view_playlist();
     let shown = if editing { name[..] } else { title[..] };
-    let tw = max(ui::text_width(shown, 22.0), 40.0);
+    let tw = max(ui::text_width(shown, 20.0), 40.0);
     if editing {
-        ui::rect(x - 8.0, y - 4.0, tw + 24.0, 36.0, 8.0, SURFACE);
-        ui::rect(x + ui::text_width(shown, 22.0) + 2.0, y + 2.0, 2.0, 24.0, 1.0, MUTED);
+        ui::rect(x - 8.0, y - 6.0, tw + 24.0, 36.0, 8.0, SURFACE);
+        ui::rect(x + ui::text_width(shown, 20.0) + 2.0, y + 1.0, 2.0, 22.0, 1.0, MUTED);
         typing = true;
     }
-    ui::text(shown, x, y, 22.0, TEXT);
+    ui::text(shown, x, y, 20.0, TEXT);
     if v == lib::PLAYLIST && !editing && hit(mx, my, x, y, tw, 30.0) {
         typing = true;
         if click { start_rename(lib::view_playlist()); }
@@ -389,7 +387,7 @@ fn header(x0: f32, w: f32, mx: f32, my: f32, click: bool) {
     var count: u8[>..] = [];
     format(count, n, if n == 1 { " song" } else { " songs" });
     if v == lib::LOCAL && lib::scanning() > 0 { count.append("  ·  scanning…"); }
-    ui::text(count, x, y + 32.0, 12.0, FAINT);
+    ui::text(count, x, y + 30.0, 12.0, FAINT);
 
     var bx = x0 + w - PAD;
     if v == lib::PLAYLIST {
@@ -566,7 +564,6 @@ fn bar(w: f32, h: f32, mx: f32, my: f32, click: bool) {
     let y = h - BAR_H;
     let cy = y + BAR_H / 2.0;
     ui::rect(0.0, y, w, BAR_H, 0.0, BAR);
-    ui::rect(0.0, y, w, 1.0, 0.0, BORDER);
     let active = !player::idle() || player::loading();
     let has = lib::has_current();
 
@@ -752,10 +749,10 @@ fn main() {
         ui::input();
         media();
         input();
-        draw();
+        if ui::visible() { draw(); }
         tell_system();
         let playing = !player::idle() && !player::paused();
-        ui::wait(if drag != 0 { 0.0 } else if player::loading() { 1.0 / 30.0 } else if search::state() == search::BUSY { 0.25 } else if playing { 0.5 } else { -1.0 });
+        ui::wait(if drag != 0 { 0.0 } else if player::loading() { 1.0 / 30.0 } else if search::state() == search::BUSY { 0.25 } else if playing && ui::visible() { 1.0 } else { -1.0 });
     }
     player::close();
     lib::close();

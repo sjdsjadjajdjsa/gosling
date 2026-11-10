@@ -15,6 +15,7 @@ let CURSOR_HAND: i32 = 4;
 
 extern fn open(title: const u8[:], w: i32, h: i32, min_w: i32, min_h: i32) = "ui_open";
 extern fn running() -> bool = "ui_running";
+extern fn visible() -> bool = "ui_visible";
 extern fn wait(timeout: f64) = "ui_wait";
 extern fn time() -> f64 = "ui_time";
 extern fn input() = "ui_input";

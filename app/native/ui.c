@@ -44,6 +44,10 @@ static Font font_at(float size) {
     }
     Font f = LoadFontFromMemory(".ttf", inter, sizeof inter, px, glyphs, nglyphs);
     SetTextureFilter(f.texture, TEXTURE_FILTER_BILINEAR);
+    for (int i = 0; i < f.glyphCount; i++) {
+        UnloadImage(f.glyphs[i].image);
+        f.glyphs[i].image = (Image){ 0 };
+    }
     int slot = nfonts < FONTS ? nfonts++ : nextfont;
     if (nfonts == FONTS && slot == nextfont && fonts[slot].px) UnloadFont(fonts[slot].font);
     nextfont = (slot + 1) % FONTS;
@@ -75,6 +79,8 @@ void ui_wait(double timeout) {
 }
 
 void ui_wake(void) { glfwPostEmptyEvent(); }
+
+bool ui_visible(void) { return !IsWindowMinimized() && !IsWindowHidden(); }
 
 double ui_time(void) { return GetTime(); }
 

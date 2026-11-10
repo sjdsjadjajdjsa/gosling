@@ -5,7 +5,7 @@ Memory is macOS `phys_footprint` 12 seconds after launch. CPU is the CPU time us
 
 | | Memory | CPU in 20 s | Threads | Size on disk |
 | --- | --- | --- | --- | --- |
-| Gosling, idle | 68 MB | 0.00 s | 9 | 1.0 MB |
+| Gosling, idle | 62 MB | 0.00 s | 9 | 1.0 MB |
 | Gosling, playing a local file | 101 MB | 0.18 s | 15 | |
 | Tonal 0.11, idle | 72 MB | 0.79 s | 14 | 16 MB |
 
@@ -15,7 +15,7 @@ Both apps search "lofi chill" on YouTube Music and play the first song, with aud
 
 | | Memory | CPU in 20 s |
 | --- | --- | --- |
-| Gosling | 129 to 130 MB | 0.26 to 0.38 s |
+| Gosling | 104 to 105 MB | 0.30 s |
 | Tonal 0.11.5 (55 MB) + its mpv (226 to 229 MB) | 280 to 284 MB | 0.92 to 1.27 s |
 
-Playing, Gosling uses about half the memory and about a third of the CPU. Idle memory is about the same; idle CPU is zero for Gosling because it draws nothing when nothing changes. Linux numbers use Tonal's `bench.py` on cedar and are still to come.
+Playing, Gosling uses under 40% of the memory and about a third of the CPU. On macOS an empty raylib window alone is 51 MB and an empty native window 18 MB, so those are the floors for each approach. Idle memory is about the same; idle CPU is zero for Gosling because it draws nothing when nothing changes. Linux numbers use Tonal's `bench.py` on cedar and are still to come.

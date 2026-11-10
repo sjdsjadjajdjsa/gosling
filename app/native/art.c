@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include "native.h"
 
-enum { SLOTS = 96, PX = 112 };
+enum { SLOTS = 48, PX = 56 };
 enum { EMPTY, WANTED, LOADING, DECODED, READY, FAILED };
 
 typedef struct {
@@ -190,8 +190,7 @@ void art_draw(const char *url, float x, float y, float size, uint32_t bg, uint32
             s->used = ++tick;
             if (s->state == DECODED) {
                 s->texture = LoadTextureFromImage(s->image);
-                GenTextureMipmaps(&s->texture);
-                SetTextureFilter(s->texture, TEXTURE_FILTER_TRILINEAR);
+                SetTextureFilter(s->texture, TEXTURE_FILTER_BILINEAR);
                 UnloadImage(s->image);
                 s->state = READY;
             }
